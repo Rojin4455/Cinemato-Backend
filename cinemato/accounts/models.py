@@ -60,6 +60,7 @@ class User(AbstractBaseUser,PermissionsMixin):
     is_active = models.BooleanField(default=True)
     date_joined = models.DateTimeField(auto_now_add=True)
     last_login = models.DateTimeField(auto_now_add=True)
+    status = models.BooleanField(default=True,blank=True,null=True)
 
     groups = models.ManyToManyField(
         'auth.Group',

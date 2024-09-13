@@ -8,8 +8,8 @@ import cinemato.settings as project_settings
 import urllib.parse
 from rest_framework import permissions, status
 from rest_framework_simplejwt.authentication import JWTAuthentication
-from .serializers import RequestOTPSerializer,VerifyOTPSerializer
-from .models import User, OTP
+from .serializers import RequestOTPSerializer,VerifyOTPSerializer, EditProfileSerializer
+from .models import User, OTP, UserProfile as UserImage
 from django.core.mail import send_mail
 from .services import get_user_data
 from django.shortcuts import redirect
@@ -75,7 +75,7 @@ class VerifyOTPView(APIView):
             if user is not None:
                 if user.is_active:
                     
-
+                    
                     refresh = RefreshToken.for_user(user)
                     access = str(refresh.access_token)
                     refresh = str(refresh)
@@ -83,7 +83,8 @@ class VerifyOTPView(APIView):
                     response = Response()
                     print("access token in verify otp: ",access)
                     
-                    response.data = {"Success": "Login successfully", "token": {"access":access,"refresh":refresh},'requestData':request.data}
+                    user.status = True
+                    response.data = {"Success": "Login successfully", "token": {"access":access,"refresh":refresh},'requestData':{"username":user.first_name,"email":user.email,"phone":user.phone}}
                     return response
                 else:
                     return Response({"No active": "This account is not active!"}, status=status.HTTP_404_NOT_FOUND)
@@ -183,19 +184,20 @@ class GoogleLoginApi(APIView):
         
 
 
-class SetTokenInCookie(APIView):
+class SetToken(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
         user = User.objects.get(id = request.data['user_id'])
-        data = get_tokens_for_user(user)
+        # data = get_tokens_for_user(user)
         response = Response(status=status.HTTP_200_OK)
 
         refresh = RefreshToken.for_user(user)
         access = str(refresh.access_token)
         refresh = str(refresh)
+        user.status = True
     
-        response.data = {"Success": "Token set to cookie successfully", 'requestData': {"email":user.email},"user_id":user.id,'token':{'refresh':refresh,'access':access}, "status":status.HTTP_200_OK}
+        response.data = {"Success": "Token set to cookie successfully", 'requestData': {"email":user.email},'token':{'refresh':refresh,'access':access}, "status":status.HTTP_200_OK}
         return response
 
 
@@ -203,46 +205,103 @@ class SetTokenInCookie(APIView):
         
 
 
-class UserProfile(APIView):
-    # Apply the IsAuthenticated permission to ensure only authenticated users can access
+# class UserProfile(APIView):
+#     # Apply the IsAuthenticated permission to ensure only authenticated users can access
 
 
-    def post(self, request):
-        print("FFFFFFFFFFFFFFFFFFFFFFFF")
-        # Instantiate the JWTAuthentication class
-        # jwt_auth = JWTAuthentication()
+#     def post(self, request):
+#         print("FFFFFFFFFFFFFFFFFFFFFFFF")
+#         # Instantiate the JWTAuthentication class
+#         # jwt_auth = JWTAuthentication()
         
-        # try:
-        #     # Attempt to authenticate the user using the token
-        #     user, token = jwt_auth.authenticate(request)
+#         # try:
+#         #     # Attempt to authenticate the user using the token
+#         #     user, token = jwt_auth.authenticate(request)
             
-        #     if user is not None:
-        #         # The user is authenticated
-        #         print("User authenticated successfully")
-        return Response({"message": "User is authenticated"}, status=status.HTTP_200_OK)
-        #     else:
-        #         # User is not authenticated
-        #         return Response({"error": "User not authenticated"}, status=status.HTTP_401_UNAUTHORIZED)
+#         #     if user is not None:
+#         #         # The user is authenticated
+#         #         print("User authenticated successfully")
+#         return Response({"message": "User is authenticated"}, status=status.HTTP_200_OK)
+#         #     else:
+#         #         # User is not authenticated
+#         #         return Response({"error": "User not authenticated"}, status=status.HTTP_401_UNAUTHORIZED)
         
-        # except Exception as e:
-        #     # Handle any exceptions that occur during authentication
-        #     return Response({"error": str(e)}, status=status.HTTP_401_UNAUTHORIZED)
+#         # except Exception as e:
+#         #     # Handle any exceptions that occur during authentication
+#         #     return Response({"error": str(e)}, status=status.HTTP_401_UNAUTHORIZED)
 
-from django.views.decorators.csrf import csrf_exempt
-class Test(APIView):
-    permission_classes = [IsAuthenticated]    # authentication_classes = []
 
-    def post(self, request):
-        # Log request headers
-        headers = dict(request.headers)
-        print("Request headers:", headers)
 
-        # Log request body
-        body = request.data
-        print("Request body:", body)
+class UserProfile(APIView):
+    permission_classes = [IsAuthenticated]
 
-        # Log raw body if necessary
-        raw_body = request.body.decode('utf-8')
-        print("Raw request body:", raw_body)
+    def get(self, request):
+        user_id = request.user.id
+        user_obj = User.objects.get(id=user_id)
+        user_profile = None
+        try:
+            user_profile = UserImage.objects.get(user=user_obj)
+        except UserImage.DoesNotExist:
+            pass
 
-        return Response({"message": "test is working"}, status=status.HTTP_200_OK)
+        user_details = {
+            'email': user_obj.email,
+            'profile': user_profile.profile_pic.url if user_profile and user_profile.profile_pic else None
+        }
+        
+
+        return Response({"message": "test is working", "user_details": user_details}, status=status.HTTP_200_OK)
+
+    
+
+class UserLogout(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self,reqeuest):
+        user = reqeuest.user
+        user.status = False
+        user.save()
+        return Response({"detail": "Logout successful."}, status=200)
+
+
+
+class UpdateUserProfile(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def put(self,request):
+        user = request.user
+        profile_pic = request.FILES.get("profile_pic")
+
+        if profile_pic:
+            print("profile pic",profile_pic)
+            user_image,created = UserImage.objects.get_or_create(user = user)
+            user_image.profile_pic = profile_pic
+            user_image.save()
+
+            return Response({"message":"Profile Photo Updated Successfully","profilePhoto":str(profile_pic)},status=status.HTTP_200_OK)
+        return Response({"error": "No profile picture provided"}, status=status.HTTP_400_BAD_REQUEST)
+    
+
+
+
+class EditUserProfile(APIView):
+
+    permission_classes = [IsAuthenticated]
+    def post(self,request):
+        user = request.user
+        serializer = EditProfileSerializer(user, data=request.data, partial=True)
+
+        if serializer.is_valid():
+            serializer.save()
+
+
+        data = {
+            "phone":user.phone,
+            "email":user.email,
+            "username":user.first_name
+        }
+
+        return Response({"message":"User profile details Updated Successfully","updatedData":data},status=status.HTTP_200_OK)
+
+        

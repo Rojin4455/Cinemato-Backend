@@ -93,7 +93,9 @@ class VerifyOTPSerializer(serializers.Serializer):
         print("ferrere")
         email = validated_data.get('email')
         phone = validated_data.get('phone')
-        first_name = validated_data.get('first_name')
+        
+        first_name = email.split("@")[0]
+        first_name = first_name
         last_name = validated_data.get('last_name')
 
         # Check if the user already exists before creating
@@ -124,3 +126,22 @@ class VerifyOTPSerializer(serializers.Serializer):
 class AuthSerializer(serializers.Serializer):
     code = serializers.CharField(required=False)
     error = serializers.CharField(required=False)
+
+
+class EditProfileSerializer(serializers.ModelSerializer):
+    phone = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    first_name = serializers.CharField(required=False)
+    email = serializers.EmailField(required=False, allow_null=True, allow_blank=True)
+
+    class Meta:
+        model = User
+        fields = ['first_name', 'phone', 'email']
+
+    def validate_phone(self, value):
+        if value and len(value) != 10:
+            raise serializers.ValidationError("Phone number must be 10 digits.")
+        return value
+
+    
+
+        
