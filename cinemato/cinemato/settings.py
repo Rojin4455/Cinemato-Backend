@@ -46,6 +46,7 @@ DEFAULT_APPS = [
     'rest_framework_simplejwt',
     'corsheaders',
     'adminauth',
+    'movie_management',
 ]
 
 CUSTOM_APPS = [

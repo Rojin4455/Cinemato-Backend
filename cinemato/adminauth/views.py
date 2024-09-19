@@ -30,6 +30,7 @@ class AdminLogin(APIView):
                         'email':user.email,
                         'refresh': str(refresh),
                         'access': str(refresh.access_token),
+                        'is_admin':user.is_superuser
                     },status=status.HTTP_200_OK)
 
 
@@ -49,15 +50,12 @@ class AllUsers(APIView):
 
     def post(self,request):
         data = request.data
-        print(data)
         page_no = data.get('currentPage')
         users_per_page = data.get('usersPerPage')
-        print("page no, users per page: ",page_no,users_per_page)
       
         users = User.objects.filter(is_staff=False).select_related('user_profile').annotate(
             profile_pic=Coalesce(F('user_profile__profile_pic'), Value(None))
-        ).values('email', 'date_joined', 'phone', 'is_active', 'profile_pic').order_by("email")[users_per_page*(page_no-1):users_per_page+users_per_page*(page_no-1)]
-        print("all users: ",users)
+        ).values('id','email', 'date_joined', 'phone', 'is_active', 'profile_pic').order_by("email")[users_per_page*(page_no-1):users_per_page+users_per_page*(page_no-1)]
         totalcount = User.objects.count()
         return Response({"message":"users frtched successfully","allUsers":users,'totalCount':totalcount},status=status.HTTP_200_OK)
         # BASE_URL = "http://127.0.0.1:8000/"
@@ -71,3 +69,26 @@ class AllUsers(APIView):
         # return Response({"message":"users frtched successfully","allUsers":users},status=status.HTTP_200_OK)
 
         pass
+
+class ChangeStatus(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def put(self,request,user_id):
+
+        print("user id:", user_id)
+        
+        # Fetch the user object by user_id
+        try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response({"error": "User not found"}, status=404)
+        
+        # Toggle the user's is_active status
+        user.is_active = not user.is_active
+        user.save()  # Save the updated user status
+        
+        print("User status updated")
+        
+        return Response({"message": "User status updated successfully"})
+
+

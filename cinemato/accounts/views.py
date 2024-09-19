@@ -84,7 +84,7 @@ class VerifyOTPView(APIView):
                     print("access token in verify otp: ",access)
                     
                     user.status = True
-                    response.data = {"Success": "Login successfully", "token": {"access":access,"refresh":refresh},'requestData':{"username":user.first_name,"email":user.email,"phone":user.phone}}
+                    response.data = {"Success": "Login successfully", "token": {"access":access,"refresh":refresh},'requestData':{"username":user.first_name,"email":user.email,"phone":user.phone,'is_admin':user.is_superuser}}
                     return response
                 else:
                     return Response({"No active": "This account is not active!"}, status=status.HTTP_404_NOT_FOUND)
@@ -201,34 +201,6 @@ class SetToken(APIView):
         return response
 
 
-
-        
-
-
-# class UserProfile(APIView):
-#     # Apply the IsAuthenticated permission to ensure only authenticated users can access
-
-
-#     def post(self, request):
-#         print("FFFFFFFFFFFFFFFFFFFFFFFF")
-#         # Instantiate the JWTAuthentication class
-#         # jwt_auth = JWTAuthentication()
-        
-#         # try:
-#         #     # Attempt to authenticate the user using the token
-#         #     user, token = jwt_auth.authenticate(request)
-            
-#         #     if user is not None:
-#         #         # The user is authenticated
-#         #         print("User authenticated successfully")
-#         return Response({"message": "User is authenticated"}, status=status.HTTP_200_OK)
-#         #     else:
-#         #         # User is not authenticated
-#         #         return Response({"error": "User not authenticated"}, status=status.HTTP_401_UNAUTHORIZED)
-        
-#         # except Exception as e:
-#         #     # Handle any exceptions that occur during authentication
-#         #     return Response({"error": str(e)}, status=status.HTTP_401_UNAUTHORIZED)
 
 
 

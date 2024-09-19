@@ -6,5 +6,6 @@ from .views import *
 
 urlpatterns = [
     path('login/',AdminLogin.as_view(),name='login'),
-    path('allusers/',AllUsers.as_view(),name='all-users')
+    path('allusers/',AllUsers.as_view(),name='all-users'),
+    path('change-status/<int:user_id>/',ChangeStatus.as_view(),name='change-status')
 ]
