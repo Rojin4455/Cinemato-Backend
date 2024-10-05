@@ -1,7 +1,11 @@
 from django.urls import path
 from .views import *
-print("here")
+
 urlpatterns = [
     path('add-movie/', AddMovieView.as_view(), name='add-movie'),
+    path('remove-movie/', RemoveMovieView.as_view(), name='add-movie'),
+    
+    # path('check-movie/<id:int>/', CheckMovieView.as_view(), name='check-movie'),
     path('get-movie/', GetMovieView.as_view(), name='get-movie'),
+    # path('full-movie-details/<id:movieId>/')
 ]

@@ -49,7 +49,7 @@ class MovieRoleSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = MovieRole
-        fields = ['person', 'role', 'character_name']
+        fields = ['person', 'role', 'character_name', 'is_cast']
 
 class MovieSerializer(serializers.ModelSerializer):
     genres = GenreSerializer(many=True)
@@ -61,14 +61,13 @@ class MovieSerializer(serializers.ModelSerializer):
         fields = [
             'title', 'tmdb_id', 'release_date', 'vote_average', 'runtime', 
             'description', 'poster_path', 'backdrop_path', 'video_key', 
-            'is_listed', 'genres', 'languages', 'roles'
+            'is_listed', 'genres', 'languages', 'roles',
         ]
 
     def create(self, validated_data):
         genres_data = validated_data.pop('genres')
         languages_data = validated_data.pop('languages')
         roles_data = validated_data.pop('roles')
-
         # Create or update the movie
         movie = Movie.objects.create(**validated_data)
 
@@ -90,8 +89,13 @@ class MovieSerializer(serializers.ModelSerializer):
 
         # Add roles and persons
         for role_data in roles_data:
+            print("this is role data: ",role_data)
             person_data = role_data.pop('person')
             person, created = Person.objects.get_or_create(**person_data)
-            MovieRole.objects.create(person=person, movie=movie, **role_data)
+            movie_role_obj = MovieRole.objects.create(person=person, movie=movie, **role_data)
+            movie_role_obj.is_cast = True if role_data['character_name'] else False
+            movie_role_obj.save()
+            
+
 
         return movie

@@ -61,6 +61,9 @@ class User(AbstractBaseUser,PermissionsMixin):
     date_joined = models.DateTimeField(auto_now_add=True)
     last_login = models.DateTimeField(auto_now_add=True)
     status = models.BooleanField(default=True,blank=True,null=True)
+    is_owner = models.BooleanField(default=False, blank=True, null=True)
+    business_name = models.CharField(max_length=50, null=True, blank=True)
+    is_approved = models.BooleanField(default=False, blank=True, null=True)
 
     groups = models.ManyToManyField(
         'auth.Group',

@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from .serializers import AdminLoginSerializer
+from .serializers import AdminLoginSerializer,TheaterSerializer
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework import status
@@ -9,6 +9,10 @@ from rest_framework.permissions import AllowAny,IsAuthenticated
 from accounts.models import User
 from django.db.models import F, Value
 from django.db.models.functions import Coalesce,Concat
+from ownerauth.serializers import TheaterOwnerSerializer
+from theater_managemant.models import Theater
+from django.shortcuts import get_object_or_404
+
 
 class AdminLogin(APIView):
     permission_classes = [AllowAny]
@@ -21,11 +25,10 @@ class AdminLogin(APIView):
             password = serializer.validated_data['password']
             print("before authenticate")
             user = authenticate(request,email=email, password=password)
-            print("after authenticate")
+            print("after authenticate",user)
             if user is not None:
                 if user.is_staff:
                     refresh = RefreshToken.for_user(user)
-
                     return Response({
                         'email':user.email,
                         'refresh': str(refresh),
@@ -92,3 +95,96 @@ class ChangeStatus(APIView):
         return Response({"message": "User status updated successfully"})
 
 
+class GetTheaterOwnersView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        owners = User.objects.filter(is_owner=True, is_approved=True)
+        serializer = TheaterOwnerSerializer(owners, many=True)  # Serialize the data
+        return Response({"message": "All owners retrieved", "allOwners": serializer.data}, status=status.HTTP_200_OK)
+
+
+class GetRequestedOwnersView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        owners = User.objects.filter(is_owner=True, is_approved=False)
+        serializer = TheaterOwnerSerializer(owners, many=True)  # Serialize the data
+        return Response({"message": "All owners retrieved", "allOwners": serializer.data}, status=status.HTTP_200_OK)
+    
+
+class GetOwnerDetails(APIView):
+    def get(self, request, ownerId):
+        try:
+            owner = User.objects.get(id=ownerId)
+            serializer = TheaterOwnerSerializer(owner)
+            print("owner got", owner)
+            
+            print("serializer obj", serializer)
+            return Response({"message": "Owner found successfully", "owner_data": serializer.data}, status=status.HTTP_200_OK)
+        except User.DoesNotExist:
+            print("Owner not found with that ID")
+            return Response({"message": "Owner not found"}, status=status.HTTP_404_NOT_FOUND)
+
+
+    
+
+class ApproveTheaterOwnerView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def patch(self,request, owner_id):
+        try:
+            owner = User.objects.get(id = owner_id)
+            owner.is_approved = True
+            owner.save()
+            return Response({"message": "Theater owner approved successfully"}, status=status.HTTP_200_OK)
+        except User.DoesNotExist:
+            return Response({"error": "Theater owner not found"}, status=status.HTTP_404_NOT_FOUND)
+
+
+
+# class DisapproveTheaterOwnerView(APIView):
+#     permission_classes = [IsAuthenticated]
+
+#     def patch(self,request, owner_id):
+#         try:
+#             owner = User.objects.get(id = owner_id)
+#             owner.is_approved = False
+#             owner.save()
+#             return Response({"message": "Theater owner Disapproved successfully"}, status=status.HTTP_200_OK)
+#         except User.DoesNotExist:
+#             return Response({"error": "Theater owner not found"}, status=status.HTTP_404_NOT_FOUND)
+
+
+
+class OwnerAllDetailsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self,request,id):
+        try:
+            # Fetch the owner by id
+            owner = get_object_or_404(User, id=id)
+            
+            # Fetch all theaters owned by this owner
+            theaters = Theater.objects.filter(owner=owner)
+
+            # Serialize owner and theater data
+            owner_data = {
+                'id': owner.id,
+                'first_name': owner.first_name,
+                'last_name': owner.last_name,
+                'email': owner.email,
+                'phone': owner.phone,
+                'theaters': TheaterSerializer(theaters, many=True).data  # serialize theaters
+            }
+            
+            return Response({
+                "message": "Owner details found successfully",
+                "owner_data": owner_data
+            }, status=status.HTTP_200_OK)
+
+        except User.DoesNotExist:
+            return Response({"message": "Owner not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        except Exception as e:
+            return Response({"message": "An error occurred: " + str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

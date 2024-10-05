@@ -13,6 +13,8 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 from pathlib import Path
 from decouple import config
 import os
+from datetime import timedelta  
+
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -45,8 +47,11 @@ DEFAULT_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'corsheaders',
+    'django.contrib.gis',
     'adminauth',
     'movie_management',
+    'ownerauth',
+    'theater_managemant',
 ]
 
 CUSTOM_APPS = [
@@ -65,7 +70,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    # 'accounts.middleware.RefreshTokenMiddleware',
+    'accounts.middleware.TokenRefreshMiddleware',
 ]
 
 CORS_ALLOWED_ORIGINS = [
@@ -73,8 +78,13 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3001",
 ]
 
+CORS_ALLOW_HEADERS = ['RefreshToken','authorization','x-csrftoken','content-type']
+
+
 
 CORS_ALLOW_CREDENTIALS = True
+
+CORS_EXPOSE_HEADERS = ['Authorization']
 
 
 AUTH_USER_MODEL = 'accounts.User'
@@ -107,49 +117,11 @@ REST_FRAMEWORK = {
 }
 
 
-from datetime import timedelta  
-# SIMPLE_JWT = {
-#   'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
-#   'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
-#   'ROTATE_REFRESH_TOKENS': False,
-#   'BLACKLIST_AFTER_ROTATION': True,
-#   'UPDATE_LAST_LOGIN': False,
 
-#   'ALGORITHM': 'HS256',
-#   'SIGNING_KEY': SECRET_KEY,
-#   'VERIFYING_KEY': None,
-#   'AUDIENCE': None,
-#   'ISSUER': None,
-
-#   'AUTH_HEADER_TYPES': ('Bearer',),
-#   'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
-#   'USER_ID_FIELD': 'id',
-#   'USER_ID_CLAIM': 'user_id',
-#   'USER_AUTHENTICATION_RULE': 'rest_framework_simplejwt.authentication.default_user_authentication_rule',
-
-#   'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
-#   'TOKEN_TYPE_CLAIM': 'token_type',
-
-#   'JTI_CLAIM': 'jti',
-
-#   'SLIDING_TOKEN_REFRESH_EXP_CLAIM': 'refresh_exp',
-#   'SLIDING_TOKEN_LIFETIME': timedelta(minutes=59),
-#   'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1),
-
-#   # custom
-#   'AUTH_COOKIE': 'access_token',  # Cookie name. Enables cookies if value is set.
-#   'AUTH_COOKIE_DOMAIN': None,     # A string like "example.com", or None for standard domain cookie.
-#   'AUTH_COOKIE_SECURE': False,    # Whether the auth cookies should be secure (https:// only).
-#   'AUTH_COOKIE_HTTP_ONLY' : False, # Http only cookie flag.It's not fetch by javascript.
-#   'AUTH_COOKIE_PATH': '/',        # The path of the auth cookie.
-#   'AUTH_COOKIE_SAMESITE': 'Lax',  # Whether to set the flag restricting cookie leaks on cross-site requests. This can be 'Lax', 'Strict', or None to disable the flag.
-
-#   'REFRESH_COOKIE': 'refresh_token',
-# }
 
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(days=1),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=10),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=10),
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
@@ -215,7 +187,7 @@ WSGI_APPLICATION = 'cinemato.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
+        'ENGINE': 'django.contrib.gis.db.backends.postgis',
         'NAME': config('DB_NAME'),
         'USER': config('DB_USER'),
         'PASSWORD': config('DB_PASSWORD'),
@@ -297,67 +269,18 @@ USE_I18N = True
 USE_TZ = True
 
 
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/5.1/howto/static-files/
-
 STATIC_URL = 'static/'
 
-# Default primary key field type
-# https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
+
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# REST_FRAMEWORK = {
-#     # Use Django's standard `django.contrib.auth` permissions,
-#     # or allow read-only access for unauthenticated users.
-#     'DEFAULT_PERMISSION_CLASSES': [
-#         'rest_framework.permissions.DjangoModelPermissionsOrAnonReadOnly'
-#     ]
-# }
 
-
-
-# Google OAuth2 settings
-# BASE_FRONTEND_URL = config('DJANGO_BASE_FRONTEND_URL', default='http://localhost:3000')
 BASE_APP_URL = "http://localhost:3000"
 BASE_API_URL = "http://localhost:8000"
 GOOGLE_OAUTH2_CLIENT_ID = config('GOOGLE_OAUTH2_CLIENT_ID')
 GOOGLE_OAUTH2_CLIENT_SECRET = config('GOOGLE_OAUTH2_CLIENT_SECRET')
 
-# redirect_uri = f'{BASE_API_URL}/auth/api/login/google/'
-
-
-
-# AUTHENTICATION_BACKENDS = (
-#     'django.contrib.auth.backends.ModelBackend',
-#     'allauth.account.auth_backends.AuthenticationBackend',
-# )
-
-
-# SOCIALACCOUNT_PROVIDERS = {
-#     'google': {
-#         'APP': {
-#             'client_id': config('GOOGLE_OAUTH2_CLIENT_ID'),
-#             'secret': config('GOOGLE_OAUTH2_CLIENT_SECRET'),
-#             'key': ''
-#         }
-#     }
-# }
-# LOGIN_REDIRECT_URL = '/'
-
-# ACCOUNT_EMAIL_VERIFICATION = 'none'
-# ACCOUNT_EMAIL_REQUIRED = True
-# SOCIALACCOUNT_QUERY_EMAIL = True
-
-
-
-# settings.py
-# SESSION_COOKIE_SECURE = False  # Temporarily for testing; set to True in production
-# CSRF_COOKIE_SECURE = False  # Temporarily for testing; set to True in production
-# SESSION_COOKIE_HTTPONLY = True  # Keep this True for security
-# CSRF_COOKIE_HTTPONLY = False  # False if you need to access it via JavaScript
-# SESSION_COOKIE_SAMESITE = 'None'
-# CSRF_COOKIE_SAMESITE = 'None'
 
 
 
@@ -368,3 +291,8 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 AUTHENTICATION_BACKENDS = (
         'django.contrib.auth.backends.ModelBackend',
     )
+
+
+GDAL_LIBRARY_PATH = r'C:\OSGeo4W\bin\gdal309.dll'
+GEOS_LIBRARY_PATH = r'C:\OSGeo4W\bin\geos_c.dll'
+

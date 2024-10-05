@@ -15,6 +15,9 @@ from .services import get_user_data
 from django.shortcuts import redirect
 from django.conf import settings
 from .serializers import AuthSerializer
+import jwt
+from django.middleware.csrf import get_token
+
 
 
 def get_tokens_for_user(user):
@@ -25,6 +28,44 @@ def get_tokens_for_user(user):
         'access':str(refresh.access_token),
     }
         
+
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework.permissions import AllowAny
+import jwt
+
+class RefreshAccessTokenView(APIView):
+    permission_classes = [AllowAny]  # Allow anyone to access this view since we're using refresh token
+    authentication_classes = []  # Disable authentication for this view
+
+    def post(self, request):
+        auth_header = request.headers.get('Authorization')
+        if not auth_header:
+            return Response({'error': 'Authorization header is missing'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Expecting format: "Bearer <token>"
+        try:
+            bearer, refresh_token = auth_header.split(' ')
+            if bearer != 'Bearer':
+                return Response({'error': 'Invalid token prefix'}, status=status.HTTP_400_BAD_REQUEST)
+        except ValueError:
+            return Response({'error': 'Invalid Authorization header format'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            # Use the refresh token to generate a new access token
+            refresh = RefreshToken(refresh_token)
+            new_access_token = str(refresh.access_token)
+            return Response({'access': new_access_token}, status=status.HTTP_200_OK)
+        except jwt.ExpiredSignatureError:
+            return Response({'error': 'Refresh token has expired'}, status=status.HTTP_401_UNAUTHORIZED)
+        except jwt.InvalidTokenError:
+            return Response({'error': 'Invalid token'}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    
 
 class RequestOTPView(APIView):
     permission_classes = [permissions.AllowAny]
@@ -46,15 +87,22 @@ class RequestOTPView(APIView):
                     project_settings.DEFAULT_FROM_EMAIL,
                     [email],
                 )
+                return Response({"message": "OTP sent successfully."}, status=status.HTTP_200_OK)
             elif phone:
-                client = Client(settings.ACCOUNT_SID, settings.AUTH_TOKEN)
-                message = client.messages.create(
-                    body=f'Your OTP is: {otp_code}',
-                    from_=settings.TWILIO_PHONE_NUMBER,
-                    to=f'{settings.COUNTRY_CODE}{phone}'
-                )
-            print("success")
-            return Response({"message": "OTP sent successfully."}, status=status.HTTP_200_OK)
+                print("data is valid")
+                try:
+                    client = Client(settings.ACCOUNT_SID, settings.AUTH_TOKEN)
+                    message = client.messages.create(
+                        body=f'Your OTP is: {otp_code}',
+                        from_=settings.TWILIO_PHONE_NUMBER,
+                        to=f'{settings.COUNTRY_CODE}{phone}'
+                    )
+                    print("success")
+                    return Response({"message": "OTP sent successfully."}, status=status.HTTP_200_OK)
+                except Exception as e:
+                    print(f"Error sending OTP: {e}")
+                    return Response({"message": "Failed to send OTP."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        print("error: ",serializer.errors)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
@@ -84,10 +132,15 @@ class VerifyOTPView(APIView):
                     print("access token in verify otp: ",access)
                     
                     user.status = True
-                    response.data = {"Success": "Login successfully", "token": {"access":access,"refresh":refresh},'requestData':{"username":user.first_name,"email":user.email,"phone":user.phone,'is_admin':user.is_superuser}}
+
+                    csrf_token = get_token(request)
+                    response.set_cookie('csrftoken', csrf_token, httponly=True)
+
+                    
+                    response.data = {"Success": "Login successfully", "token": {"access":access,"refresh":refresh},'requestData':{"username":user.first_name,"email":user.email,"phone":user.phone}}
                     return response
                 else:
-                    return Response({"No active": "This account is not active!"}, status=status.HTTP_404_NOT_FOUND)
+                    return Response({"message": "This account is Blocked"}, status=status.HTTP_404_NOT_FOUND)
             else:
                 print("User creation failed")
         else:
@@ -229,11 +282,22 @@ class UserProfile(APIView):
 class UserLogout(APIView):
     permission_classes = [IsAuthenticated]
 
-    def post(self,reqeuest):
-        user = reqeuest.user
+    def post(self,request):
+        user = request.user
         user.status = False
         user.save()
-        return Response({"detail": "Logout successful."}, status=200)
+        try:
+            refresh_token = request.data.get("refresh_token")
+
+            # If a refresh token exists, blacklist it
+            if refresh_token:
+                token = RefreshToken(refresh_token)
+                token.blacklist()
+
+            return Response({"message": "Logout successful"}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": "Something went wrong during logout"}, status=status.HTTP_400_BAD_REQUEST)
+        # return Response({"detail": "Logout successful."}, status=200)
 
 
 

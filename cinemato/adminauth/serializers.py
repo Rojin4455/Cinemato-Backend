@@ -1,4 +1,6 @@
 from rest_framework import serializers
+from accounts.models import User
+from theater_managemant.models import Theater
 
 class AdminLoginSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True)
@@ -14,3 +16,17 @@ class AdminLoginSerializer(serializers.Serializer):
             raise serializers.ValidationError("password is required")
         
         return data
+    
+
+
+class TheaterSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Theater
+        fields = '__all__'
+
+class OwnerDetailsSerializer(serializers.ModelSerializer):
+    theaters = TheaterSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = User
+        fields = '__all__'
