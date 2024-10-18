@@ -89,7 +89,6 @@ class MovieSerializer(serializers.ModelSerializer):
 
         # Add roles and persons
         for role_data in roles_data:
-            print("this is role data: ",role_data)
             person_data = role_data.pop('person')
             person, created = Person.objects.get_or_create(**person_data)
             movie_role_obj = MovieRole.objects.create(person=person, movie=movie, **role_data)

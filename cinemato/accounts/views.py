@@ -17,6 +17,7 @@ from django.conf import settings
 from .serializers import AuthSerializer
 import jwt
 from django.middleware.csrf import get_token
+import cloudinary.uploader
 
 
 
@@ -271,7 +272,7 @@ class UserProfile(APIView):
 
         user_details = {
             'email': user_obj.email,
-            'profile': user_profile.profile_pic.url if user_profile and user_profile.profile_pic else None
+            'profile': user_profile.image_url if user_profile else None
         }
         
 
@@ -312,10 +313,20 @@ class UpdateUserProfile(APIView):
         if profile_pic:
             print("profile pic",profile_pic)
             user_image,created = UserImage.objects.get_or_create(user = user)
-            user_image.profile_pic = profile_pic
+            # user_image.profile_pic = profile_pic
+
+
+            upload_result = cloudinary.uploader.upload(
+                profile_pic,
+                folder="user_photos"
+            )
+            
+            image_url = upload_result.get('secure_url')
+
+            user_image.image_url = image_url
             user_image.save()
 
-            return Response({"message":"Profile Photo Updated Successfully","profilePhoto":str(profile_pic)},status=status.HTTP_200_OK)
+            return Response({"message":"Profile Photo Updated Successfully","profilePhoto":user_image.image_url},status=status.HTTP_200_OK)
         return Response({"error": "No profile picture provided"}, status=status.HTTP_400_BAD_REQUEST)
     
 

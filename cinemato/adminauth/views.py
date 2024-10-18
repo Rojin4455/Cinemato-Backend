@@ -56,9 +56,9 @@ class AllUsers(APIView):
         page_no = data.get('currentPage')
         users_per_page = data.get('usersPerPage')
       
-        users = User.objects.filter(is_staff=False).select_related('user_profile').annotate(
-            profile_pic=Coalesce(F('user_profile__profile_pic'), Value(None))
-        ).values('id','email', 'date_joined', 'phone', 'is_active', 'profile_pic').order_by("email")[users_per_page*(page_no-1):users_per_page+users_per_page*(page_no-1)]
+        users = User.objects.filter(is_staff=False, is_owner=False).select_related('user_profile').annotate(
+            image_url=Coalesce(F('user_profile__image_url'), Value(None))
+        ).values('id','email', 'date_joined', 'phone', 'is_active', 'image_url').order_by("email")[users_per_page*(page_no-1):users_per_page+users_per_page*(page_no-1)]
         totalcount = User.objects.count()
         return Response({"message":"users frtched successfully","allUsers":users,'totalCount':totalcount},status=status.HTTP_200_OK)
         # BASE_URL = "http://127.0.0.1:8000/"
@@ -100,6 +100,7 @@ class GetTheaterOwnersView(APIView):
 
     def get(self, request):
         owners = User.objects.filter(is_owner=True, is_approved=True)
+        print(owners)
         serializer = TheaterOwnerSerializer(owners, many=True)  # Serialize the data
         return Response({"message": "All owners retrieved", "allOwners": serializer.data}, status=status.HTTP_200_OK)
 
@@ -109,6 +110,7 @@ class GetRequestedOwnersView(APIView):
 
     def get(self, request):
         owners = User.objects.filter(is_owner=True, is_approved=False)
+        print(owners)
         serializer = TheaterOwnerSerializer(owners, many=True)  # Serialize the data
         return Response({"message": "All owners retrieved", "allOwners": serializer.data}, status=status.HTTP_200_OK)
     
@@ -143,17 +145,17 @@ class ApproveTheaterOwnerView(APIView):
 
 
 
-# class DisapproveTheaterOwnerView(APIView):
-#     permission_classes = [IsAuthenticated]
+class DisapproveTheaterOwnerView(APIView):
+    permission_classes = [IsAuthenticated]
 
-#     def patch(self,request, owner_id):
-#         try:
-#             owner = User.objects.get(id = owner_id)
-#             owner.is_approved = False
-#             owner.save()
-#             return Response({"message": "Theater owner Disapproved successfully"}, status=status.HTTP_200_OK)
-#         except User.DoesNotExist:
-#             return Response({"error": "Theater owner not found"}, status=status.HTTP_404_NOT_FOUND)
+    def patch(self,request, owner_id):
+        try:
+            owner = User.objects.get(id = owner_id)
+            owner.is_approved = False
+            owner.save()
+            return Response({"message": "Theater owner Disapproved successfully"}, status=status.HTTP_200_OK)
+        except User.DoesNotExist:
+            return Response({"error": "Theater owner not found"}, status=status.HTTP_404_NOT_FOUND)
 
 
 
@@ -188,3 +190,32 @@ class OwnerAllDetailsView(APIView):
 
         except Exception as e:
             return Response({"message": "An error occurred: " + str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+
+
+
+class DisapproveTheaterclass(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def patch(self,request,theaterId):
+        try:
+            theater = Theater.objects.get(id = theaterId)
+            theater.is_approved = False
+            theater.save()
+            return Response({"message": "Theater Disapproved successfully"}, status=status.HTTP_200_OK)
+        except User.DoesNotExist:
+            return Response({"error": "Theater not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+
+class ApproveTheaterclass(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def patch(self,request,theaterId):
+        print("TT")
+        try:
+            theater = Theater.objects.get(id = theaterId)
+            theater.is_approved = True
+            theater.save()
+            return Response({"message": "Theater Approved successfully"}, status=status.HTTP_200_OK)
+        except Theater.DoesNotExist:
+            return Response({"error": "Theater not found"}, status=status.HTTP_404_NOT_FOUND)

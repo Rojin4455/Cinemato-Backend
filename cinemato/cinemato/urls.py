@@ -29,10 +29,11 @@ urlpatterns = [
     path('movie/', include('movie_management.urls')),
     path('owner/', include('ownerauth.urls')),
     path('theater/', include('theater_managemant.urls')),
+    # path('screen/',include('screen_management.urls')),
 
 
 
 ]
-if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+# if settings.DEBUG:
+#     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 

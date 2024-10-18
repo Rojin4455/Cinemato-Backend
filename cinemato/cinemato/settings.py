@@ -14,6 +14,9 @@ from pathlib import Path
 from decouple import config
 import os
 from datetime import timedelta  
+from django.contrib.auth import get_user_model
+
+
 
 
 
@@ -37,6 +40,9 @@ ALLOWED_HOSTS = []
 # Application definition
 
 DEFAULT_APPS = [
+    'cloudinary_storage',  # Cloudinary storage app
+    'cloudinary',  # Cloudinary core app
+    
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -52,6 +58,7 @@ DEFAULT_APPS = [
     'movie_management',
     'ownerauth',
     'theater_managemant',
+    'screen_management'
 ]
 
 CUSTOM_APPS = [
@@ -59,6 +66,37 @@ CUSTOM_APPS = [
 ]
 
 INSTALLED_APPS =  DEFAULT_APPS + CUSTOM_APPS
+
+
+
+
+
+
+CLOUDINARY_STORAGE = {
+    'CLOUD_NAME': config('CLOUDINARY_CLOUD_NAME'),
+    'API_KEY': config('CLOUDINARY_API_KEY'),
+    'API_SECRET': config('CLOUDINARY_API_SECRET'),
+}
+
+DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+
+
+
+import cloudinary
+
+cloudinary.config(
+    cloud_name = "dowhhe8uq",
+    api_key = "646394783367282",
+    api_secret = "Kk2q1pD61Oz1svnokBcWOzGsLw8",
+)
+
+# import cloudinary.uploader
+# result = cloudinary.uploader.upload("/Users/rojinsaji/Downloads/PVR-Forum-Mall-Maradu-Kochi-Kerala.jpg")
+# print("cloudinary result: ",result)
+
+
+MEDIA_URL = '/media/'
+
 
 
 MIDDLEWARE = [
@@ -284,8 +322,8 @@ GOOGLE_OAUTH2_CLIENT_SECRET = config('GOOGLE_OAUTH2_CLIENT_SECRET')
 
 
 
-MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+# MEDIA_URL = '/media/'
+# MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 
 AUTHENTICATION_BACKENDS = (
@@ -293,6 +331,11 @@ AUTHENTICATION_BACKENDS = (
     )
 
 
-GDAL_LIBRARY_PATH = r'C:\OSGeo4W\bin\gdal309.dll'
-GEOS_LIBRARY_PATH = r'C:\OSGeo4W\bin\geos_c.dll'
+# settings.py
+# GDAL_LIBRARY_PATH = '/opt/homebrew/opt/gdal/lib/libgdal.dylib'
+# GEOS_LIBRARY_PATH = '/opt/homebrew/opt/geos/lib/libgeos_c.dylib'
+
+GDAL_LIBRARY_PATH = "/opt/homebrew/lib/libgdal.dylib"
+
+# GDAL_LIBRARY_PATH = "/opt/homebrew/Cellar/gdal/3.9.2_2/lib -lgdal"
 

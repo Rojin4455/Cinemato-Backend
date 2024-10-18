@@ -77,7 +77,6 @@ def get_user_data(validated_data):
 
     code = validated_data.get('code')
     error = validated_data.get('error')
-    print("code",code)
     if error or not code:
         params = urlencode({'error': error})
         print("Error here ::::",params)
@@ -104,7 +103,7 @@ def get_user_data(validated_data):
 
     )
     picture_url = user_data.get('picture')
-    if picture_url:
+    if picture_url and created:
         save_image_from_url(picture_url, user_profile)
     print("user profile created")
 
