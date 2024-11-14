@@ -8,4 +8,6 @@ urlpatterns = [
     # path('check-movie/<id:int>/', CheckMovieView.as_view(), name='check-movie'),
     path('get-movie/', GetMovieView.as_view(), name='get-movie'),
     # path('full-movie-details/<id:movieId>/')
+    path('location-movies/', LocationMoviesView.as_view(), name='location-movies'),
+    path('location-theaters/', LocationTheatersView.as_view(), name='location-theaters')
 ]

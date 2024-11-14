@@ -3,6 +3,8 @@ from django.contrib.auth.models import AbstractBaseUser,PermissionsMixin,BaseUse
 from random import randint
 from django.utils import timezone
 from datetime import timedelta
+from django.contrib.gis.geos import Point
+from django.contrib.gis.db import models as gis_models
 
 
 
@@ -123,3 +125,20 @@ class UserProfile(models.Model):
 
     def __str__(self):
         return str(self.user.first_name)
+    
+
+class UserLocation(models.Model):
+    user =  models.OneToOneField(User, on_delete=models.CASCADE, related_name="user_location")
+    location = models.CharField(max_length=255)
+    lat = models.DecimalField(max_digits=25, decimal_places=20)
+    lng = models.DecimalField(max_digits=25, decimal_places=20)
+    geom = gis_models.PointField(srid=4326, blank=True, null=True)
+
+    def save(self, *args, **kwargs):
+        self.geom = Point(float(self.lng), float(self.lat), srid=4326)
+        super(UserLocation, self).save(*args, **kwargs)
+
+
+    def __str__(self):
+        return f"{self.user.email} - {self.location.split(" ")[0]}"
+        

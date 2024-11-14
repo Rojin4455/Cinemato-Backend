@@ -29,8 +29,8 @@ urlpatterns = [
     path('movie/', include('movie_management.urls')),
     path('owner/', include('ownerauth.urls')),
     path('theater/', include('theater_managemant.urls')),
-    # path('screen/',include('screen_management.urls')),
-
+    path('screen/',include('screen_management.urls')),
+    path('booking/', include('booking_management.urls'))
 
 
 ]

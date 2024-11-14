@@ -23,11 +23,11 @@ class Person(models.Model):
 
 class Movie(models.Model):
     title = models.CharField(max_length=255)
-    tmdb_id = models.IntegerField()
-    release_date = models.DateField()
-    vote_average = models.FloatField()
-    runtime = models.IntegerField()
-    description = models.TextField()
+    tmdb_id = models.IntegerField(blank=True, null=True)
+    release_date = models.DateField(blank=True, null=True)
+    vote_average = models.FloatField(blank=True, default=0)
+    runtime = models.IntegerField(blank=True, null=True)
+    description = models.TextField(blank=True, default="No description available.")
     poster_path = models.URLField(max_length=500, blank=True, null=True)  # URL for poster image
     backdrop_path = models.URLField(max_length=500, blank=True, null=True)  # URL for backdrop image
     video_key = models.CharField(max_length=225, blank=True, null=True)

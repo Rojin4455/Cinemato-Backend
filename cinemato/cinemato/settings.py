@@ -15,6 +15,8 @@ from decouple import config
 import os
 from datetime import timedelta  
 from django.contrib.auth import get_user_model
+from celery.schedules import crontab
+
 
 
 
@@ -42,7 +44,8 @@ ALLOWED_HOSTS = []
 DEFAULT_APPS = [
     'cloudinary_storage',  # Cloudinary storage app
     'cloudinary',  # Cloudinary core app
-    
+    'django_celery_beat',
+
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -58,7 +61,8 @@ DEFAULT_APPS = [
     'movie_management',
     'ownerauth',
     'theater_managemant',
-    'screen_management'
+    'screen_management',
+    'booking_management',
 ]
 
 CUSTOM_APPS = [
@@ -339,3 +343,16 @@ GDAL_LIBRARY_PATH = "/opt/homebrew/lib/libgdal.dylib"
 
 # GDAL_LIBRARY_PATH = "/opt/homebrew/Cellar/gdal/3.9.2_2/lib -lgdal"
 
+
+
+CELERY_BROKER_URL = 'redis://localhost:6379/0'
+CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+
+
+
+CELERY_BEAT_SCHEDULE = {
+    'revert-reserved-seats-every-10-min': {
+        'task': 'booking_management.tasks.revert_unconfirmed_reservations',
+        'schedule': crontab(minute='*/1'),
+    },
+}

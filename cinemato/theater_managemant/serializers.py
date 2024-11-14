@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Theater, Screen, Tier, ScreenImage, Seat
+from .models import Theater, Screen, Tier, ScreenImage, Seat, SnackCategory, SnackItem, TheaterSnack
 import cloudinary.uploader
 
 
@@ -23,7 +23,7 @@ class TierSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Tier
-        fields = ['name', 'price', 'total_seats', 'seats', 'id']
+        fields = ['name', 'price', 'total_seats', 'seats', 'id', 'rows', 'columns']
 
 class ScreenImageSerializer(serializers.ModelSerializer):
     class Meta:
@@ -46,6 +46,7 @@ class ScreenSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Screen
+        order_by = '-id'
         fields = ['name', 'type', 'tiers', 'screen_images', 'theater', 'capacity','id']
 
     def create(self, validated_data):
@@ -71,9 +72,11 @@ class ScreenSerializer(serializers.ModelSerializer):
 
         print("Screen images data: ", screen_images_data)
         
-
+        i = 1
         for tier_data in tiers_data:
-            Tier.objects.create(screen=screen, **tier_data)
+            print("tier_date", tier_data)
+            Tier.objects.create(screen=screen, **tier_data, position = i)
+            i += 1
 
 
         return screen
@@ -105,3 +108,80 @@ class ScreenSerializer(serializers.ModelSerializer):
         if 'tiers' not in attrs or not attrs['tiers']:
             raise serializers.ValidationError("At least one tier must be provided.")
         return attrs
+    
+
+class TheaterSnackCategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SnackCategory
+        fields = "__all__"
+    
+class SnackItemSerializerAll(serializers.ModelSerializer):
+    category = TheaterSnackCategorySerializer()
+    class Meta:
+        model = SnackItem
+        fields = "__all__"
+
+class SnackCategorySerializer(serializers.ModelSerializer):
+    snack_items = serializers.SerializerMethodField()
+    class Meta:
+        model = SnackCategory
+        fields = "__all__"
+
+    def get_snack_items(self, obj):
+        available_snacks = self.context.get("available_snacks", None)
+        if available_snacks is not None:
+            snacks = obj.snack_items.filter(id__in=available_snacks)
+        else:
+            snacks = obj.snack_items.all()
+        
+        return SnackItemSerializerAll(snacks, many=True).data
+
+
+class SnackItemSerializer(serializers.ModelSerializer):
+    image = serializers.ImageField(write_only=True)
+    class Meta:
+        model = SnackItem
+        fields = ['name', 'description', 'is_vegetarian','image','calories', 'category', 'id']
+
+    def create(self, validated_data):
+        upload_result = cloudinary.uploader.upload(
+            validated_data.pop("image"),
+            folder="screen_photos"
+        )
+        
+        image_url = upload_result.get('secure_url')
+
+        validated_data['image_url'] = image_url
+
+        return SnackItem.objects.create(**validated_data)
+
+
+
+class TheaterSnackSerializer(serializers.ModelSerializer):
+    theater_id = serializers.IntegerField(write_only=True)
+    snack_id = serializers.IntegerField(write_only = True)
+    snack_item = SnackItemSerializer(read_only=True)
+    theater = TheaterSerializer(read_only=True)
+    class Meta:
+        model = TheaterSnack
+        fields = ['theater_id', 'snack_id', 'price', 'stock', 'theater', 'snack_item']
+
+    def create(self,validated_data):
+        theater = Theater.objects.get(id=validated_data.pop('theater_id'))
+        snack = SnackItem.objects.get(id=validated_data.pop('snack_id'))
+        theater_snack = TheaterSnack.objects.create(
+            theater=theater,
+            snack_item=snack,
+            is_available=True,
+            **validated_data
+        )
+
+        return theater_snack
+    
+class TheaterFullSnacksSerializer(serializers.ModelSerializer):
+    snack_item = SnackItemSerializerAll()
+
+    class Meta:
+        model = TheaterSnack
+        fields = '__all__'
+    

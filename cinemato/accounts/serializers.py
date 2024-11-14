@@ -1,7 +1,8 @@
 from rest_framework import serializers
-from .models import User, OTP
+from .models import User, OTP, UserLocation
 from django.utils import timezone
 from random import randint
+
 
 class RequestOTPSerializer(serializers.Serializer):
     email = serializers.EmailField(required=False,allow_null=True, allow_blank=True)
@@ -56,13 +57,14 @@ class VerifyOTPSerializer(serializers.Serializer):
     phone = serializers.CharField(required=False, allow_null=True, allow_blank=True)
     first_name = serializers.CharField(required=False)
     last_name = serializers.CharField(required=False)
+    address = serializers.CharField()
+    lat = serializers.DecimalField(max_digits=25, decimal_places=20)
+    lng = serializers.DecimalField(max_digits=25, decimal_places=20)
     
     def validate(self, data):
-        print("Validating OTP and contact details")
         otp = data.get('otp')
         email = data.get('email')
         phone = data.get('phone')
-        print("Received email:", email, "Received phone:", phone)
         if email:
 
             otp_instance = OTP.objects.filter(otp=otp).filter(
@@ -90,9 +92,11 @@ class VerifyOTPSerializer(serializers.Serializer):
             raise serializers.ValidationError('You must provide either an email or a phone number.')
 
     def create_user(self, validated_data):
-        print("ferrere")
         email = validated_data.get('email')
         phone = validated_data.get('phone')
+        address = validated_data.get('address')
+        lat = validated_data.get('lat')
+        lng = validated_data.get('lng')
         
         first_name = email.split("@")[0]
         first_name = first_name
@@ -100,17 +104,26 @@ class VerifyOTPSerializer(serializers.Serializer):
 
         # Check if the user already exists before creating
         if email:
+            
             if User.objects.filter(email=email).exists():
+                user = User.objects.get(email=email)
                 print("User already exists with this email")
-                print(User.objects.filter(email=email))
-                print("FERRREFFEREFEETETE")
-                return User.objects.get(email=email)
+                user_location = UserLocation.objects.get(user=user)
+                user_location.location = address
+                user_location.lat = lat
+                user_location.lng = lng
+                user_location.save()
+                return user
         elif phone:  
             if User.objects.filter(phone=phone).exists():
-                print("User already exists with this email")
-                print(User.objects.filter(email=email))
-                print("phone user pirintt")
-                return User.objects.get(phone=phone)
+                user = User.objects.get(phone=phone)
+                user_location = UserLocation.objects.get(user=user)
+                user_location.location = address
+                user_location.lat = lat
+                user_location.lng = lng
+                user_location.save()
+                print("User already exists with this phone")
+                return user
         
         user = User.objects.create(
             email=email if email else None,
@@ -118,7 +131,15 @@ class VerifyOTPSerializer(serializers.Serializer):
             first_name=first_name,
             last_name=last_name
         )
-        print("User created:", user)
+
+
+        UserLocation.objects.create(
+            user = user,
+            location = address,
+            lat = lat,
+            lng = lng
+        )
+
         return user
     
 
@@ -141,6 +162,22 @@ class EditProfileSerializer(serializers.ModelSerializer):
         if value and len(value) != 10:
             raise serializers.ValidationError("Phone number must be 10 digits.")
         return value
+    
+
+# class UpdateLocationSerializer(serializers.Serializer):
+#     address = serializers.CharField()
+#     lat = serializers.DecimalField(max_digits=25, decimal_places=20)
+#     lng = serializers.DecimalField(max_digits=25, decimal_places=20)
+
+
+#     def update(self, validated_data):
+#         address = validated_data.get('address')
+#         lat = validated_data.get('lat')
+#         lng = validated_data.get('lng')
+#         user = self.user
+#         print(user)
+#         return user
+
 
     
 

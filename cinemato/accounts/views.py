@@ -9,7 +9,7 @@ import urllib.parse
 from rest_framework import permissions, status
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from .serializers import RequestOTPSerializer,VerifyOTPSerializer, EditProfileSerializer
-from .models import User, OTP, UserProfile as UserImage
+from .models import User, OTP, UserProfile as UserImage, UserLocation
 from django.core.mail import send_mail
 from .services import get_user_data
 from django.shortcuts import redirect
@@ -350,5 +350,29 @@ class EditUserProfile(APIView):
         }
 
         return Response({"message":"User profile details Updated Successfully","updatedData":data},status=status.HTTP_200_OK)
+    
+
+
+class UpdateUserLocationView(APIView):
+    permission_classes = [IsAuthenticated]
+    def post(self,request):
+        data = request.data
+        user = request.user
+        address = data['address']
+        lat = data['lat']
+        lng = data['lng']
+        try:
+            user_location = UserLocation.objects.get(user=user)
+        except:
+            user_location = UserLocation.objects.create(user=user,lat=lat,lng=lng)
+            return Response({"message":"User location details Updated Successfully",},status=status.HTTP_200_OK)
+
+        user_location.lat = lat
+        user_location.lng = lng
+        user_location.location = address
+        user_location.save()
+        return Response({"message":"User location details Updated Successfully",},status=status.HTTP_200_OK)
+
+        
 
         

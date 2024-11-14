@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import RequestOTPView,VerifyOTPView,ResendOtpView,GoogleLoginApi,ConfirmGoogleLogin,SetToken,UserProfile,UserLogout,UpdateUserProfile,EditUserProfile,RefreshAccessTokenView
+from .views import RequestOTPView,VerifyOTPView,ResendOtpView,GoogleLoginApi,ConfirmGoogleLogin,SetToken,UserProfile,UserLogout,UpdateUserProfile,EditUserProfile,RefreshAccessTokenView,UpdateUserLocationView
 from rest_framework_simplejwt.views import TokenRefreshView
 
 
@@ -16,6 +16,6 @@ urlpatterns = [
     path("user/update-profile/",UpdateUserProfile.as_view(), name="user-update-profile"),
     path("user/edit-profile/",EditUserProfile.as_view(), name="user-edit-profile"),
     path("user/logout/",UserLogout.as_view(), name="user-edit-profile"),
-    path("renew-token/",RefreshAccessTokenView.as_view(), name='renew-view')
-    
+    path("renew-token/",RefreshAccessTokenView.as_view(), name='renew-view'),
+    path('update-location/', UpdateUserLocationView.as_view(), name='update-location')
 ]

@@ -1,5 +1,7 @@
 from rest_framework import serializers
 from .models import Genre, Language, Person, Movie, MovieRole
+from screen_management.models import MovieSchedule,ShowTime, DailyShow
+from theater_managemant.models import Theater,Screen
 
 class GenreSerializer(serializers.ModelSerializer):
     class Meta:
@@ -61,7 +63,7 @@ class MovieSerializer(serializers.ModelSerializer):
         fields = [
             'title', 'tmdb_id', 'release_date', 'vote_average', 'runtime', 
             'description', 'poster_path', 'backdrop_path', 'video_key', 
-            'is_listed', 'genres', 'languages', 'roles',
+            'is_listed', 'genres', 'languages', 'roles','id',   
         ]
 
     def create(self, validated_data):
@@ -98,3 +100,91 @@ class MovieSerializer(serializers.ModelSerializer):
 
 
         return movie
+    
+
+
+
+
+class MovieScheduleSerializer(serializers.ModelSerializer):
+    movie = MovieSerializer()
+    class Meta:
+        model = MovieSchedule
+        fields = '__all__'
+
+
+
+
+
+
+
+
+
+# class ShowTimeSerializer(serializers.ModelSerializer):
+#     show_time = serializers.TimeField(source='start_time')
+
+#     class Meta:
+#         model = ShowTime
+#         fields = ['show_time']
+
+# class ScreenSerializer(serializers.ModelSerializer):
+#     showtimes = ShowTimeSerializer(many=True, read_only=True)
+
+#     class Meta:
+#         model = Screen
+#         fields = ['name', 'type', 'capacity', 'showtimes']
+
+# class TheaterSerializer(serializers.ModelSerializer):
+#     screens = ScreenSerializer(many=True, read_only=True)
+
+#     class Meta:
+#         model = Theater
+#         fields = ['name', 'location', 'lat', 'lng', 'screens']
+
+# class TheaterMovieScheduleSerializer(serializers.ModelSerializer):
+#     theater = serializers.SerializerMethodField()
+
+#     def get_theater(self, obj):
+#         print("obj:",obj)
+
+#         nearby_theaters = Theater.objects.filter(screens__showtimes__schedules=obj)
+#         return TheaterSerializer(nearby_theaters, many=True).data
+
+#     class Meta:
+#         model = MovieSchedule
+#         fields = ['theater', 'start_date', 'end_date']
+
+
+
+
+from rest_framework import serializers
+
+
+class DailyShowSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DailyShow
+        fields = ['show_date', 'show_time']
+
+class ShowTimeSerializer(serializers.ModelSerializer):
+    daily_shows = DailyShowSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = ShowTime
+        fields = ['id', 'start_time', 'daily_shows']
+
+class ScreenSerializer(serializers.ModelSerializer):
+    showtimes = ShowTimeSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Screen
+        fields = ['id', 'name', 'type', 'capacity', 'showtimes']
+
+class TheaterSerializer(serializers.ModelSerializer):
+    screens = ScreenSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Theater
+        fields = ['id', 'name', 'location', 'screens']
+
+
+
+        
