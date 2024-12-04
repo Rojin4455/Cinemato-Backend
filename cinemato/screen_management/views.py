@@ -11,9 +11,11 @@ from django.http import HttpResponseRedirect
 import datetime
 import pytz
 from dateutil import parser
-from .models import ShowTime,MovieSchedule,DailyShow
+from .models import ShowTime,MovieSchedule,DailyShow, SeatBooking
 from movie_management.serializers import MovieSerializer
 from datetime import date as date_method
+from datetime import datetime as datetime_datetime, timedelta
+
 
 
 
@@ -94,14 +96,17 @@ class ScreenTimeView(APIView):
         showtime_data = {}
         for index,showtime in enumerate(show_times):
             try:
-                movie_schedule = MovieSchedule.objects.get(showtime=showtime)
+                movie_schedule = MovieSchedule.objects.get(showtime=showtime, end_date__gte = datetime.date.today())
                 movie_data = MovieSerializer(movie_schedule.movie).data
+                movie_schedule = MovieScheduleSerializer(movie_schedule).data
             except MovieSchedule.DoesNotExist:
                 movie_data = "None"
+                movie_schedule = "None"
 
             showtime_data[index] = {
-                "time": ShowTimesSerializer(showtime).data,  # Standard 12-hour format with AM/PM
-                "movie": movie_data
+                "time": ShowTimesSerializer(showtime).data,
+                "movie": movie_data,
+                "movie_schedule": movie_schedule
             }
         # data = ShowTimesSerializer(show_times, many=True)
         
@@ -120,17 +125,16 @@ class ScreenTimeView(APIView):
         screen_time_data = request.data.get('time')
         screen_id = request.data.get('screen_id')
         screen = Screen.objects.get(id=screen_id)
-        print(screen_time_data)
         # screen_time = parser.parse(screen_time_data)
 
         # local_tz = pytz.timezone('Asia/Kolkata')
         # screen_time_local = screen_time.astimezone(local_tz)      
         # time_only = screen_time_local.time()
-
+        current_date = date_method.today() 
 
         showtime = ShowTime.objects.get(start_time = screen_time_data, screen=screen)
         try:
-            MovieSchedule.objects.get(showtime=showtime)
+            MovieSchedule.objects.get(showtime=showtime , end_date__gte = current_date)
             return Response({"message":"A Movie Is currently running in this show time"}, status=status.HTTP_409_CONFLICT)
         except MovieSchedule.DoesNotExist:
             showtime.delete()
@@ -160,21 +164,18 @@ class ShowDetailsView(APIView):
         schedules = []
         for showtime in show_times:
             try:
-                movie_schedule = MovieSchedule.objects.get(showtime=showtime)
+                movie_schedule = MovieSchedule.objects.get(showtime=showtime, end_date__gte = datetime.date.today())
                 schedules.append(movie_schedule)
             except:
                 pass
-
+        print("shedules: ",schedules)
         if not schedules:
             return Response({"message":"no movies are currently running"},status=status.HTTP_404_NOT_FOUND)
         start_dates = end_dates = []
         for i in schedules:
-            start_dates.append(i.start_date)
+            start_dates.append(datetime.date.today())
             end_dates.append(i.end_date)
         #     print(f"movie : {i.movie} --> start date: {i.start_date} --> end date: {i.end_date}" )
-
-        # print(sorted(start_dates)[0])
-        # print(sorted(end_dates)[-1])
 
         
         return Response({"message":"running shows times found successfully","data":{"startDate":sorted(start_dates)[0],"endDate":sorted(end_dates)[-1]}},status.HTTP_200_OK)
@@ -245,3 +246,92 @@ class SetTimeView(APIView):
             serializer.save()  # Save the validated data to the database
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+
+
+class ChangeEndDateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        try:
+            new_date = request.data.get("new_date")
+            schedule_id = request.data.get("scheduleId")
+            
+            if not new_date or not schedule_id:
+                return Response({"error": "Missing required fields"}, status=status.HTTP_400_BAD_REQUEST)
+
+            new_date = datetime_datetime.strptime(new_date[:10], "%Y-%m-%d").date()
+            today = datetime_datetime.now().date()
+            
+            movie_schedule = MovieSchedule.objects.get(id=schedule_id)
+            current_end_date = movie_schedule.end_date
+            date_diff = (new_date - today).days
+
+            if date_diff > 6:
+                movie_schedule.end_date = new_date
+                daily_shows = DailyShow.objects.filter(show_date__gt = new_date, schedule=movie_schedule,).delete()
+                print("daily shows: ",daily_shows)
+                movie_schedule.save()
+                return Response({"message": "End date updated successfully"}, status=status.HTTP_200_OK)
+
+            end_check_date = new_date + timedelta(days=5)
+            daily_shows = DailyShow.objects.filter(
+                schedule=movie_schedule,
+                show_date__range=[new_date, end_check_date]
+            )
+
+            has_bookings = SeatBooking.objects.filter(
+                daily_show__in=daily_shows,
+                status__in=["booked", "reserved"]
+            ).exists()
+
+            if has_bookings:
+                return Response(
+                    {"error": "Cannot change end date. Bookings exist within the restricted date range."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            movie_schedule.end_date = new_date
+            movie_schedule.save()
+            
+            daily_shows = DailyShow.objects.filter(show_date__gt = new_date, schedule=movie_schedule,).delete()
+
+
+            return Response({"message": "End date updated successfully"}, status=status.HTTP_200_OK)
+
+        except MovieSchedule.DoesNotExist:
+            return Response({"error": "MovieSchedule not found"}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class DeleteScheduleView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        schedule_id = request.data.get('scheduleId')
+        try:
+            movie_schedule = MovieSchedule.objects.get(id=schedule_id)
+
+            current_date = date_method.today()
+            end_date = current_date + timedelta(days=6)
+
+            bookings_exist = SeatBooking.objects.filter(
+                daily_show__schedule=movie_schedule,
+                daily_show__show_date__range=(current_date, end_date),
+                status__in=['booked','reserved']
+            ).exists()
+
+            if bookings_exist:
+                return Response(
+                    {"error": "Cannot delete schedule. There are bookings in the next 6 days."},
+                    status=400
+                )
+
+            movie_schedule.delete()
+            return Response({"message": "Schedule deleted successfully."}, status=200)
+
+        except MovieSchedule.DoesNotExist:
+            return Response({"error": "Schedule not found."}, status=404)
+        except Exception as e:
+            return Response({"error": str(e)}, status=500)

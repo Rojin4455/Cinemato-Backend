@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Genre, Language, Person, Movie, MovieRole
+from .models import Genre, Language, Person, Movie, MovieRole, Hashtag, Review, ReviewReaction
 from screen_management.models import MovieSchedule,ShowTime, DailyShow
 from theater_managemant.models import Theater,Screen
 
@@ -70,10 +70,8 @@ class MovieSerializer(serializers.ModelSerializer):
         genres_data = validated_data.pop('genres')
         languages_data = validated_data.pop('languages')
         roles_data = validated_data.pop('roles')
-        # Create or update the movie
         movie = Movie.objects.create(**validated_data)
 
-        # Add genres
         for genre_data in genres_data:
             if isinstance(genre_data, Genre):
                 genre = genre_data
@@ -81,7 +79,6 @@ class MovieSerializer(serializers.ModelSerializer):
                 genre, created = Genre.objects.get_or_create(**genre_data)
             movie.genres.add(genre)
 
-        # Add languages
         for language_data in languages_data:
             if isinstance(language_data, Language):
                 language = language_data
@@ -89,7 +86,6 @@ class MovieSerializer(serializers.ModelSerializer):
                 language, created = Language.objects.get_or_create(**language_data)
             movie.languages.add(language)
 
-        # Add roles and persons
         for role_data in roles_data:
             person_data = role_data.pop('person')
             person, created = Person.objects.get_or_create(**person_data)
@@ -112,7 +108,94 @@ class MovieScheduleSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+class HashTagSerializers(serializers.ModelSerializer):
+    class Meta:
+        model = Hashtag
+        fields = "__all__"
 
+
+class ReviewSerializer(serializers.ModelSerializer):
+    selectedHashtags = serializers.ListField(
+        child=serializers.CharField(max_length=100),
+        write_only=True,
+        required=False
+    )
+    movieId = serializers.IntegerField(write_only=True)
+    content = serializers.CharField(required=False, allow_blank=True)
+
+    class Meta:
+        model = Review
+        fields = ['rating', 'content', 'selectedHashtags', 'movieId']
+
+    def create(self, validated_data):
+        rating = validated_data['rating']
+        movie_id = validated_data['movieId']
+        content = validated_data.get('content', '')
+        selected_hashtags = validated_data.get('selectedHashtags', [])
+
+        movie = Movie.objects.get(id=movie_id)
+
+        user = self.context['request'].user
+        review = Review.objects.create(
+            user=user,
+            movie=movie,
+            content=content,
+            rating=rating
+        )
+        score = 0
+        if rating <=3:
+            score = 3
+        elif rating <= 6:
+            score = 6
+        else:
+            score = 10
+        print("full rext: ", selected_hashtags)
+        for hashtag_text in selected_hashtags:
+            print("hashtags: ",hashtag_text)
+            hashtag, created = Hashtag.objects.get_or_create(heading=hashtag_text, rated_at = score)
+            print("hashtags: ",hashtag_text)
+
+            review.hashtags.add(hashtag)
+
+
+
+        return review
+
+
+class ReviewReactionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ReviewReaction
+        fields = '__all__'
+
+
+class AllReviewSerializer(serializers.ModelSerializer):
+    hashtags = HashTagSerializers(many=True)
+    user = serializers.SerializerMethodField()
+    movie_title = serializers.CharField(source='movie.title', read_only=True)
+    review_reaction = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Review
+        fields = [
+            'id', 'user', 'movie_title', 'content', 'rating', 'hashtags',
+            'created_at', 'updated_at', 'likes_count', 'dislikes_count', 'review_reaction'
+        ]
+
+    def get_user(self, obj):
+        if obj.user:
+            return {
+                'id': obj.user.id,
+                'email': obj.user.email,
+            }
+        return None
+    
+    def get_review_reaction(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            reaction = obj.reactions.filter(user=request.user).first()
+            if reaction:
+                return ReviewReactionSerializer(reaction).data
+        return None
 
 
 

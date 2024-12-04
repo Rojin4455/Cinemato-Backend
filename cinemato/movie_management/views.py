@@ -1,10 +1,10 @@
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
-from .serializers import MovieSerializer,MovieScheduleSerializer,TheaterSerializer
-from .models import Movie
+from .serializers import MovieSerializer,MovieScheduleSerializer,TheaterSerializer, HashTagSerializers, ReviewSerializer, AllReviewSerializer
+from .models import Movie, Hashtag, ReviewReaction, Review
 from accounts.models import UserLocation
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from theater_managemant.models import Theater
 from django.contrib.gis.geos import Point
 from django.contrib.gis.db.models.functions import Distance
@@ -16,6 +16,10 @@ from django.db.models import Q
 from datetime import date
 from rest_framework.permissions import IsAuthenticatedOrReadOnly 
 from collections import defaultdict
+from rest_framework.exceptions import NotFound
+from geopy.distance import geodesic 
+
+
 
 
 
@@ -31,15 +35,6 @@ def get_nearby_theaters(lat,lng):
     )
 
     return nearby_theaters
-
-    # movies_in_nearby_theaters = Movie.objects.filter(
-    #     schedules__showtime__screen__theater__in=nearby_theaters
-    # ).distinct()
-    # print("movies in nearby theaters: ",movies_in_nearby_theaters)
-    
-
-    # return movies_in_nearby_theaters
-
 
 class AddMovieView(APIView):
     permission_classes = [IsAuthenticated]
@@ -71,16 +66,6 @@ class GetMovieView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-# class CheckMovieView(APIView):
-#     permission_classes = [IsAuthenticated]
-
-#     def get(self,request,id):
-#         try:
-#             movieobj = Movie.objects.get(tmdb_id = id)
-#             if movieobj:
-#                 return Response({"message": "Movie is already listed"},status=status.HTTP_202_ACCEPTED)
-#         except Movie.DoesNotExist:
-#             return Response({"Message":"movie is not listed",},status=status.HTTP_200_OK)
 
     
 
@@ -158,14 +143,13 @@ class LocationMoviesView(APIView):
         movie__release_date__gt=date.today(),
         showtime__screen__theater__in=nearby_theaters
         ).values('movie').distinct()
-        
+        print("upcoming movie before: ",upcoming_movies)
 
         distinct_now_showing_movies = Movie.objects.filter(id__in=[item['movie'] for item in now_showing_movies])
         distinct_upcoming_movies = Movie.objects.filter(id__in=[item['movie'] for item in upcoming_movies])
 
         now_showing_data = MovieSerializer(distinct_now_showing_movies, many=True).data
         upcoming_data = MovieSerializer(distinct_upcoming_movies, many=True).data
-
 
 
         data = {
@@ -178,7 +162,6 @@ class LocationMoviesView(APIView):
         return Response(data,status=status.HTTP_200_OK)
     
 
-from geopy.distance import geodesic  # You can use geopy to calculate distances
 
 
 def calculate_distance(lat1, lng1, lat2, lng2):
@@ -200,12 +183,10 @@ class LocationTheatersView(APIView):
             user_location = UserLocation.objects.get(user=request.user)
             lat, lng = user_location.lat, user_location.lng
 
-        # Get nearby theaters and filter those running the movie
         nearby_theaters = get_nearby_theaters(lat, lng)
         if not nearby_theaters:
             return Response({"message": "This Movie is currently unavailable in this location"}, status=status.HTTP_404_NOT_FOUND)
 
-        # Retrieve the movie and schedule details within the 5-day range
         movie_id = request.data.get('id')
         movie = Movie.objects.get(id=movie_id)
 
@@ -219,12 +200,9 @@ class LocationTheatersView(APIView):
             showtime__screen__theater__in=nearby_theaters
         ).select_related("showtime__screen", "showtime__screen__theater")
 
-        # Create the nested JSON response format
         response_data = defaultdict(lambda: defaultdict(lambda: {"screens": defaultdict(list), "address": None, "distance_km": None}))
-        theater_info = {}  # Dictionary to store address and distance once per theater
-
+        theater_info = {} 
         for schedule in schedules:
-            # Filter daily shows within the 5-day range and organize them by date
             daily_shows = DailyShow.objects.filter(
                 schedule=schedule,
                 show_date__range=(today, end_date)
@@ -235,27 +213,24 @@ class LocationTheatersView(APIView):
             theater_id = theater.id
             screen_name = schedule.showtime.screen.name
             screen_type = schedule.showtime.screen.type
-            theater_location = (theater.lat, theater.lng)  # Assuming theater location is in the `location` field
+            theater_location = (theater.lat, theater.lng)
 
             if theater_name not in theater_info:
                 theater_distance = calculate_distance(lat, lng, theater_location[0], theater_location[1])
                 theater_info[theater_name] = {
-                    "address": theater.location,  # Assuming theater has an address field
+                    "address": theater.location,
                     "distance_km": round(theater_distance, 2),
                     "theater_id":theater_id
                 }
 
-            # Now populate the `response_data` with the show times and theater info
             for show in daily_shows:
                 date_str = str(show.show_date)
                 response_data[date_str][theater_name]["screens"][screen_name].append([show.show_time.strftime("%H:%M"),screen_type])
 
-                # Ensure address and distance are set in response_data for each theater and date
                 response_data[date_str][theater_name]["address"] = theater_info[theater_name]["address"]
                 response_data[date_str][theater_name]["distance_km"] = theater_info[theater_name]["distance_km"]
                 response_data[date_str][theater_name]["theater_id"] = theater_info[theater_name]["theater_id"]
 
-        # Organize data in the desired format for the response
         formatted_response = {
             date: {
                 theater: {
@@ -272,8 +247,104 @@ class LocationTheatersView(APIView):
             for date, theaters in response_data.items()
         }
 
-        print("formatted response: ",formatted_response)
         return Response({'message': 'success response', "data": formatted_response}, status=status.HTTP_200_OK)
+    
 
+class MovieHashtagsView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        hashtags = Hashtag.objects.all()
+        serializer = HashTagSerializers(hashtags, many=True)
+        
+        return Response(data=serializer.data,status=status.HTTP_200_OK)
+    
+
+class MovieReviewView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+
+        user = request.user
+        try:
+            review = Review.objects.get(user=user)
+
+            if review:
+                return Response({"message":"User is alrady rated this movie"}, status=status.HTTP_400_BAD_REQUEST)
+        except Review.DoesNotExist:
+            pass
+        print(request.data)
+        rating = request.data.get('rating')
+        request.data['rating'] = float(rating)
+        serializer = ReviewSerializer(data=request.data, context={'request': request})
+        
+        if serializer.is_valid():
+            review = serializer.save()
+            return Response(
+                {"message": "Review created successfully", "data": serializer.data},
+                status=status.HTTP_201_CREATED
+            )
+
+        error_messages = {field: error for field, error in serializer.errors.items()}
+
+        return Response(
+            {
+                "message": "Failed to create review",
+                "errors": error_messages
+            },
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
     
+
+    def get(self, request, movieId):
+        try:
+            movie = Movie.objects.get(id=movieId)
+        except Movie.DoesNotExist:
+            raise NotFound(f"Movie with id {movieId} not found.")
+        reviews = Review.objects.filter(movie=movie).order_by('created_at','-likes_count', '-dislikes_count')
+        
+        serializer = AllReviewSerializer(reviews, many=True, context={'request': request})
+        return Response(serializer.data)
+
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_200_OK, HTTP_404_NOT_FOUND
+from .models import Review, ReviewReaction
+
+class ReviewReactionView(APIView):
+    permission_classes = [IsAuthenticated]  # Only logged-in users can react
+
+    def post(self, request):
+        user = request.user
+        review_id = request.data.get('reviewId')
+        reaction = request.data.get('reaction')
+        
+        try:
+            review = Review.objects.get(id=review_id)
+        except Review.DoesNotExist:
+            return Response({"error": "Review not found."}, status=HTTP_404_NOT_FOUND)
+        
+        opposite_reaction = 'dislike' if reaction == 'like' else 'like'
+
+        review_reaction, created = ReviewReaction.objects.update_or_create(
+            review=review, user=user,
+            defaults={'reaction': reaction}
+        )
+
+        ReviewReaction.objects.filter(review=review, user=user, reaction=opposite_reaction).delete()
+
+        like_count = ReviewReaction.objects.filter(review=review, reaction='like').count()
+        dislike_count = ReviewReaction.objects.filter(review=review, reaction='dislike').count()
+        review.likes_count = like_count
+        review.dislikes_count = dislike_count
+        review.save()
+
+        return Response({
+            "message": "Reaction updated successfully.",
+            "likes": like_count,
+            "dislikes": dislike_count,
+            "currentReaction": reaction
+        }, status=HTTP_200_OK)

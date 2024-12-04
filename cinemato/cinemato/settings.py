@@ -16,6 +16,7 @@ import os
 from datetime import timedelta  
 from django.contrib.auth import get_user_model
 from celery.schedules import crontab
+import stripe
 
 
 
@@ -201,7 +202,7 @@ ROOT_URLCONF = 'cinemato.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / "templates"],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -351,8 +352,14 @@ CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
 
 
 CELERY_BEAT_SCHEDULE = {
-    'revert-reserved-seats-every-10-min': {
+    'revert-reserved-seats-every-1-min': {
         'task': 'booking_management.tasks.revert_unconfirmed_reservations',
         'schedule': crontab(minute='*/1'),
     },
 }
+
+
+STRIPE_SECRET_KEY = config('STRIPE_SECRET_KEY')
+STRIPE_PUBLISHABLE_KEY = config('STRIPE_PUBLISHABLE_KEY')
+
+stripe.api_key = config('STRIPE_SECRET_KEY')

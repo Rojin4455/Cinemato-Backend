@@ -9,5 +9,9 @@ urlpatterns = [
     path('get-movie/', GetMovieView.as_view(), name='get-movie'),
     # path('full-movie-details/<id:movieId>/')
     path('location-movies/', LocationMoviesView.as_view(), name='location-movies'),
-    path('location-theaters/', LocationTheatersView.as_view(), name='location-theaters')
+    path('location-theaters/', LocationTheatersView.as_view(), name='location-theaters'),
+    path('movie-hashtags/', MovieHashtagsView.as_view()),
+    path('add-review/', MovieReviewView.as_view()),
+    path('get-reviews/<int:movieId>/', MovieReviewView.as_view()),
+    path('add-review-reaction/', ReviewReactionView.as_view()),
 ]

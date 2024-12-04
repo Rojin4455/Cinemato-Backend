@@ -92,7 +92,7 @@ class MovieScheduleSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = MovieSchedule
-        fields = ['start_date', 'end_date', 'selected_times', 'movie_id', 'screen_id', 'daily_shows']
+        fields = ['start_date', 'end_date', 'selected_times', 'movie_id', 'screen_id', 'daily_shows','id']
 
     def create(self, validated_data):
         start_date = validated_data['start_date']

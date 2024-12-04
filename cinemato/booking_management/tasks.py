@@ -7,7 +7,7 @@ from screen_management.models import SeatBooking
 def revert_unconfirmed_reservations():
     time_threshold = timezone.now() - timedelta(minutes=1)
     expired_seats = SeatBooking.objects.filter(status='reserved', reserved_at__lt=time_threshold)
-
+    print("function called")
     for seat in expired_seats:
         seat.status = 'available'
         seat.reserved_at = None

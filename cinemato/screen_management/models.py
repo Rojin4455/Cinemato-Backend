@@ -7,10 +7,7 @@ from movie_management.models import Movie
 
 class ShowTime(models.Model):
     screen = models.ForeignKey(Screen, related_name='showtimes', on_delete=models.CASCADE)
-    # movie = models.ForeignKey(Movie, related_name='showtimes', on_delete=models.CASCADE, null=True, blank=True)
-    # start_time = models.DateTimeField(default=None)
     start_time = models.TimeField(default=None)
-    # end_time = models.DateTimeField()
 
     def __str__(self):
         return f"{self.screen.name} - {self.start_time}"
@@ -28,13 +25,18 @@ class MovieSchedule(models.Model):
 
     def save(self, *args, **kwargs):
         is_new = self.pk is None
+
+        if not is_new:
+            old_schedule = MovieSchedule.objects.get(pk=self.pk)
+            if self.end_date > old_schedule.end_date:
+                self._add_new_dates(old_schedule.end_date + timedelta(days=1), self.end_date)
+
         super().save(*args, **kwargs)
 
         if is_new:
             self.initialize_schedule()
 
     def initialize_schedule(self):
-
         with transaction.atomic():
             date = self.start_date
             while date <= self.end_date:
@@ -43,9 +45,26 @@ class MovieSchedule(models.Model):
                     show_date=date,
                     show_time=self.showtime.start_time
                 )
-
                 self._initialize_seat_bookings(daily_show)
                 date += timedelta(days=1)
+
+    def _add_new_dates(self, start_date, end_date):
+        with transaction.atomic():
+            date = start_date
+            while date <= end_date:
+                try:
+                    print("inside the while condition")
+                    daily_show = DailyShow.objects.create(
+                        schedule=self,
+                        show_date=date,
+                        show_time=self.showtime.start_time
+                    )
+                    print("dailty show created... ")
+                    self._initialize_seat_bookings(daily_show)
+                    date += timedelta(days=1)
+                except Exception as e:
+                    print(str(e))
+                    raise KeyError()
 
     def _initialize_seat_bookings(self, daily_show):
         seats = Seat.objects.filter(tier__screen=self.showtime.screen)
@@ -59,14 +78,15 @@ class MovieSchedule(models.Model):
                 tier_row=seat.tier.rows,
                 tier_column=seat.tier.columns,
                 identifier=seat.identifier,
-                position = seat.tier.position,
+                position=seat.tier.position,
                 tier_name=seat.tier.name,
                 tier_price=seat.tier.price,
             )
             for seat in seats
         ]
+        print("before creating seat booking.....")
         SeatBooking.objects.bulk_create(seat_bookings)
-
+        print("seat booking also craeted...")
 
 
 class DailyShow(models.Model):
@@ -92,6 +112,7 @@ class SeatBooking(models.Model):
     daily_show      = models.ForeignKey(DailyShow, related_name='seat_bookings', on_delete=models.CASCADE)
     user            = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL)
     seat            = models.ForeignKey(Seat, related_name='bookings', null=True, blank=True, on_delete=models.SET_NULL)
+    visitor         = models.CharField(null=True, blank=True)
     status          = models.CharField(max_length=10, choices=STATUS_CHOICES, default='available',)
     reserved_at     = models.DateTimeField(null=True, blank=True)
     seat_row        = models.CharField(max_length=5)
@@ -127,56 +148,3 @@ class SeatBooking(models.Model):
         super().save(*args, **kwargs)
 
 
-# class ShowDate(models.Model):
-#     date = models.DateField()
-#     screen = models.ForeignKey(Screen, related_name='showdate', on_delete=models.CASCADE)
-
-# class BookingLayout:
-#     STATUS_CHOICES = [
-#         ('booked', 'Booked'),
-#         ('reserved', 'Reserved'),
-#         ('available', 'Available'),
-#     ]
-#     screen = models.ForeignKey(Screen, related_name="booking_layout", on_delete=models.CASCADE)
-#     tier = models.ForeignKey(Tier, related_name='seats', on_delete=models.CASCADE)
-#     row = models.CharField(max_length=5)
-#     column = models.PositiveIntegerField()
-#     is_available = models.BooleanField(default=False)
-#     identifier = models.CharField(max_length=5, null=True, blank=True)
-#     status = models.CharField(
-#         max_length=10,
-#         choices=STATUS_CHOICES,
-#         default='available',
-#     )
-#     date = models.ForeignKey(ShowDate, related_name='booking_layout', on_delete=models.CASCADE)
-#     time = models.ForeignKey(ShowTime, related_name='booking_layout', on_delete=models.CASCADE)
-
-#     def __str__(self):
-#         return f"Seat {self.tier.screen.name} - {self.tier.name} - {self.identifier} - {self.row} - {self.column}"
-    
-
-
-
-
-
-
-
-    # class Meta:
-    #     unique_together = ('screen', 'start_time')
-
-
-# class SeatBooking(models.Model):
-#     show_time = models.ForeignKey(ShowTime, related_name='seat_bookings', on_delete=models.CASCADE)
-#     seat = models.ForeignKey(Seat, related_name='bookings', on_delete=models.CASCADE)
-#     user = models.ForeignKey(User, related_name='bookings', on_delete=models.CASCADE)
-#     is_booked = models.BooleanField(default=False)
-#     booking_time = models.DateTimeField(auto_now_add=True)
-
-#     def __str__(self):
-#         return f"Booking for {self.seat.identifier} at {self.show_time} by {self.user.email}"
-    
-
-
-# class MovieScheduleSample(models.Model):
-#     movie_title = models.CharField(max_length=255)
-#     time = models.TimeField()

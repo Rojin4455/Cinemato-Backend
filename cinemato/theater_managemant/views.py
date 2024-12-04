@@ -47,7 +47,7 @@ class GetTheaterView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self,request):
-        theater = Theater.objects.all()
+        theater = Theater.objects.filter(owner=request.user)
         serializer = TheaterSerializer(theater,many=True)
 
         return Response(serializer.data)
