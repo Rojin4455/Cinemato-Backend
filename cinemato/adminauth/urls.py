@@ -15,5 +15,9 @@ urlpatterns = [
     path('theater-owners/<int:owner_id>/disapprove/', DisapproveTheaterOwnerView.as_view(),name='disapprove-theater-owner'),
     path('owner-all-details/<int:id>/', OwnerAllDetailsView.as_view(),name='owner-all-details'),
     path('approve-theater/<int:theaterId>/', ApproveTheaterclass.as_view(), name='approve-theater'),
-    path('disapprove-theater/<int:theaterId>/', DisapproveTheaterclass.as_view(), name='disapprove-theater')
+    path('disapprove-theater/<int:theaterId>/', DisapproveTheaterclass.as_view(), name='disapprove-theater'),
+    path('dashboard/', DashBoardDataView.as_view()),
+    path('booking-report/',BookingReportView.as_view()),
+    path('dashboard-booking/',BookingTrendsAPIView.as_view()),
+
 ]

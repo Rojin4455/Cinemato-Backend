@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from .models import Theater, Screen, Tier, ScreenImage, Seat, SnackCategory, SnackItem, TheaterSnack
 import cloudinary.uploader
+from booking_management.models import Booking
 
 
 
@@ -185,3 +186,12 @@ class TheaterFullSnacksSerializer(serializers.ModelSerializer):
         model = TheaterSnack
         fields = '__all__'
     
+
+
+class BookingSerializer(serializers.ModelSerializer):
+    total_bookings = serializers.FloatField()
+    class Meta:
+        model = Booking
+        fields = [
+                    'theater_name', 'screen_name', 'show_date', 'total_bookings'
+                ]

@@ -14,4 +14,7 @@ urlpatterns = [
     path('add-review/', MovieReviewView.as_view()),
     path('get-reviews/<int:movieId>/', MovieReviewView.as_view()),
     path('add-review-reaction/', ReviewReactionView.as_view()),
+    path('inactive-movie/',InactiveMovieView.as_view()),
+    path('activate-movie/',ActiveMovieView.as_view()),
+    path('get-movie-ids/', GetMovieIDsView.as_view()),
 ]

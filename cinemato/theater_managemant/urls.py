@@ -15,5 +15,8 @@ urlpatterns = [
     path('theater/get-added-snack/<int:theater_id>/', AddedSnacksClass.as_view()),
     path('update-snack/', UpdateSnackTheater.as_view()),
     path('delete-snack/<int:snack_id>/', UpdateSnackTheater.as_view()),
+    path('dashboard-theater/', DashBoardDataView.as_view()),
+    path('dashboard-booking/',BookingTrendsAPIView.as_view()),
+    path('booking-report/',BookingReportView.as_view())
 
 ]

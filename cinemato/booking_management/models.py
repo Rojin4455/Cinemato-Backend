@@ -20,6 +20,8 @@ class Booking(models.Model):
     email                       = models.EmailField(null=True, blank=True)
     phone                       = models.CharField(max_length=10, null=True, blank=True)
     total                       = models.DecimalField(max_digits=6, decimal_places=2)
+    theater_id                  = models.BigIntegerField()
+    screen_id                   = models.BigIntegerField()
     theater_name                = models.TextField()
     screen_name                 = models.CharField()
     theater_address             = models.TextField()

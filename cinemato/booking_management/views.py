@@ -29,6 +29,14 @@ from django.db.models import Q
 
 
 
+def get_payment_intent_id(checkout_session_id):
+    try:
+        checkout_session = stripe.checkout.Session.retrieve(checkout_session_id)
+        return checkout_session.payment_intent
+    except stripe.error.StripeError as e:
+        print(f"Failed to retrieve checkout session: {e.user_message}")
+        return None
+    
 
 
 def month_converter(month):
@@ -215,7 +223,6 @@ class AddedSnacksClass(APIView):
 @api_view(['POST'])
 def create_payment_intent(request):
     data = request.data
-    print(data['selectedTime'],data['selectedDate'], data['selectedScreen'])
     try:
         with transaction.atomic():
             user = request.user if request.user.is_authenticated else None
@@ -228,8 +235,9 @@ def create_payment_intent(request):
             selected_movie = data['selectedMovie']
             total = sum(float(seat['seat']['tier_price']) for seat in selected_seats) + \
                     sum(float(snack['price']) * data['quantities'][str(snack['id'])] for snack in added_snacks)
+            theater_obj = Theater.objects.get(id=theater['id'])
 
-
+            screen = Screen.objects.get(theater__id=theater_obj.id, name__iexact=screen_name)
             booking = Booking.objects.create(
                 user=user,
                 email=data.get('email'),
@@ -237,6 +245,8 @@ def create_payment_intent(request):
                 total=total,
                 theater_name=theater['name'],
                 theater_address=theater['address'],
+                theater_id = theater_obj.id,
+                screen_id = screen.id,
                 screen_name=screen_name,
                 show_date=f"{selected_date['year']}-{month_converter(selected_date['month'])}-{selected_date['day']}",
                 show_time=selected_time,
@@ -246,6 +256,7 @@ def create_payment_intent(request):
                 genres=", ".join(i['name'] for i in selected_movie["genres"]),
                 is_snacks=bool(added_snacks),
             )
+
             for seat in selected_seats:
                 BookedTicket.objects.create(
                     booking = booking,
@@ -312,6 +323,7 @@ def create_payment_intent(request):
             return Response({'id': checkout_session.id}, status=status.HTTP_200_OK)
 
     except Exception as e:
+        print("e: ",e)
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
 
@@ -366,27 +378,41 @@ class PaymentSuccessClass(APIView):
         
 
 
+
 class PaymentCancelClass(APIView):
     permission_classes = [AllowAny]
+
     def get(self, request, booking_id):
         try:
             booking = Booking.objects.get(id=booking_id)
+            
             if booking.payment_status == 'cancelled':
-                return Response({"message": "Payment already cancelled"}, status=status.HTTP_400_BAD_REQUEST)
+                return HttpResponseRedirect(
+                    f"{settings.BASE_APP_URL}/user/payment-failed?message=Payment already cancelled"
+                )
 
             booking.payment_status = 'cancelled'
             booking.save()
+
             seats = BookedTicket.objects.filter(booking=booking)
             for seat in seats:
                 seat_obj = SeatBooking.objects.get(id=seat.seat_id)
                 seat_obj.status = "available"
-            
-            return Response({"message": "Booking Payment Cancelled"}, status=status.HTTP_200_OK)
-        
+                seat_obj.save()
+
+            return HttpResponseRedirect(
+                f"{settings.BASE_APP_URL}/user/payment-failed?message=Booking Payment Cancelled"
+            )
+
         except Booking.DoesNotExist:
-            return Response({"message": "Booking not found"}, status=status.HTTP_404_NOT_FOUND)
+            return HttpResponseRedirect(
+                f"{settings.BASE_APP_URL}/user/payment-failed?message=Booking not found"
+            )
         except Exception as e:
-            return Response({"message": f"An error occurred: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return HttpResponseRedirect(
+                f"{settings.BASE_APP_URL}/user/payment-failed?message=An error occurred: {str(e)}"
+            )
+
         
 
 class TicketDetailsClass(APIView):
@@ -547,6 +573,23 @@ class CancelTicketView(APIView):
                 seat.reserved_at = None
                 seat.save()
 
+
+            if booking.stripe_checkout_session_id:
+                try:
+                    checkout_session = stripe.checkout.Session.retrieve(booking.stripe_checkout_session_id)
+                    payment_intent_id = checkout_session.payment_intent
+                    
+                    total_amount = booking.total * 100
+                    refund_amount = int(total_amount * 0.75)
+                    
+                    stripe.Refund.create(
+                        payment_intent=payment_intent_id,
+                        amount=refund_amount,
+                        reason='requested_by_customer'
+                    )
+                except stripe.error.StripeError as e:
+                    return Response({'message': f'Refund failed: {e.user_message}'}, status=status.HTTP_400_BAD_REQUEST)
+
             booking.save()
 
             return Response({'message': 'Booking cancelled successfully.'}, status=status.HTTP_200_OK)
@@ -616,6 +659,23 @@ class CancelTicketUnknownView(APIView):
                     seat.reserved_at = None
                     seat.save()
 
+
+            if booking.stripe_checkout_session_id:
+                try:
+                    checkout_session = stripe.checkout.Session.retrieve(booking.stripe_checkout_session_id)
+                    payment_intent_id = checkout_session.payment_intent
+                    
+                    total_amount = booking.total * 100
+                    refund_amount = int(float(total_amount) * 0.75)
+                    
+                    stripe.Refund.create(
+                        payment_intent=payment_intent_id,
+                        amount=refund_amount,
+                        reason='requested_by_customer'
+                    )
+                except stripe.error.StripeError as e:
+                    return Response({'message': f'Refund failed: {e.user_message}'}, status=status.HTTP_400_BAD_REQUEST)
+
             booking.save()
             return Response({'message': f'Booking with ID {booking_id} cancelled successfully.'}, 
                             status=status.HTTP_200_OK)
@@ -638,6 +698,9 @@ class OwnerBookTicketsView(APIView):
         selected_date = request.data.get("selected_date")
         selected_time = request.data.get("selected_time")
         screen_name = request.data.get("screen_name")
+        theater = Theater.objects.get(id=selected_theater['id'])
+            
+        screen = Screen.objects.get(theater__id=theater.id, name__iexact=screen_name)
 
         input_date = str(selected_date['year']) + '-' + str(month_converter(selected_date['month'])) + '-' + str(selected_date['date'])
         
@@ -666,6 +729,8 @@ class OwnerBookTicketsView(APIView):
                 theater_name=selected_theater["name"],
                 theater_address=selected_theater["location"],
                 screen_name=screen_name,
+                screen_id = screen.id,
+                theater_id = theater.id,
                 show_date=input_date,
                 show_time=selected_time,
                 movie_title=selected_movie,

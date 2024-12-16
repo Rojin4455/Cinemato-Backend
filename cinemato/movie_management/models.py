@@ -33,7 +33,7 @@ class Movie(models.Model):
     backdrop_path       = models.URLField(max_length=500, blank=True, null=True)  
     video_key           = models.CharField(max_length=225, blank=True, null=True)
     is_listed           = models.BooleanField(default=True)
-
+    
     genres              = models.ManyToManyField(Genre, related_name='movies') 
     languages           = models.ManyToManyField(Language, related_name='movies')  
 

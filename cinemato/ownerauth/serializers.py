@@ -23,13 +23,14 @@ class OwnerSignupSerializer(serializers.ModelSerializer):
             is_owner = True
 
         )
+        user.save()
         return user
 
 
 class TheaterOwnerSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'first_name', 'email', 'phone', 'business_name', 'is_approved']
+        fields = ['id', 'first_name', 'email', 'phone', 'business_name', 'is_approved', 'date_joined']
 
 
 class OwnerLoginSerializer(serializers.Serializer):
@@ -41,8 +42,11 @@ class OwnerLoginSerializer(serializers.Serializer):
         password = data.get('password')
 
         # Authenticate the user using Django's authenticate method
+        print("email: ",email, "password: ", password)
+        user = User.objects.get(email=email)
+        print("user og: ",user)
         user = authenticate(email=email, password=password)
-
+        print("userrrrrr: ",user)
         if user is None:
             raise serializers.ValidationError("Invalid login credentials")
 

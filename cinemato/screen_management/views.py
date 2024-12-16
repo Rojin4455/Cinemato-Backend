@@ -33,16 +33,13 @@ class AddTierLayoutClass(APIView):
         serializer = SeatLayoutSerializer(data=request.data.get('payload'), context={'tier_id': tier_id})
         if serializer.is_valid():
             serializer.save()
-            screen_details_view = ScreenDetailsClass()  # Create an instance of ScreenDetailsClass
-            # Call the 'get' method of ScreenDetailsClass to fetch updated screen details
+            screen_details_view = ScreenDetailsClass() 
             response = screen_details_view.get(request, screen_id=screen_id)
             print("here is the response: ",response)
             print("here is the response screen id: ",screen_id)
             screen_details_url = reverse('screen-details', kwargs={'screen_id': screen_id})
-                        # Perform the redirect to the ScreenDetailsClass view
             return HttpResponseRedirect(screen_details_url)
             # return Response({"message": "Seat layout saved successfully!"}, status=status.HTTP_201_CREATED)
-            return response
         else:
             print("error:   ",serializer.errors)
 

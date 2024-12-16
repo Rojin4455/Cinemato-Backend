@@ -43,8 +43,9 @@ ALLOWED_HOSTS = []
 # Application definition
 
 DEFAULT_APPS = [
-    'cloudinary_storage',  # Cloudinary storage app
-    'cloudinary',  # Cloudinary core app
+    'daphne',
+    'cloudinary_storage',
+    'cloudinary',
     'django_celery_beat',
 
     'django.contrib.admin',
@@ -64,15 +65,29 @@ DEFAULT_APPS = [
     'theater_managemant',
     'screen_management',
     'booking_management',
+    'channels',
+    'notification',
+    # 'notification.apps.NotificationConfig',
+
 ]
 
 CUSTOM_APPS = [
     
 ]
 
+ASGI_APPLICATION = 'cinemato.asgi.application'
+
 INSTALLED_APPS =  DEFAULT_APPS + CUSTOM_APPS
 
 
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            "hosts": [('127.0.0.1', 6379)],  # Use 127.0.0.1 instead of localhost
+        },
+    },
+}
 
 
 
@@ -215,7 +230,6 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'cinemato.wsgi.application'
 
 
 # Database

@@ -59,12 +59,20 @@ class AddMovieView(APIView):
 class GetMovieView(APIView):
     permission_classes = [IsAuthenticated]
     def get(self,request):
+        page = request.GET.get("page")
+        print("page:",page)
+        movies = []
+        if page == "admin":
+            movies = Movie.objects.all()
+        else:
+            movies = Movie.objects.filter(is_listed=True)
 
-        movies = Movie.objects.all()
         serializer = MovieSerializer(movies, many=True)
         
         return Response(serializer.data, status=status.HTTP_200_OK)
+    
 
+    
 
 
     
@@ -113,7 +121,6 @@ class LocationMoviesView(APIView):
                 user_location.lat, user_location.lng, user_location.location = lat, lng, address
                 user_location.save()
             except UserLocation.DoesNotExist:
-
                 user_location = UserLocation.objects.create(user=request.user, lat=lat, lng=lng, location=address)
             
         if not lat or not lng:
@@ -121,6 +128,8 @@ class LocationMoviesView(APIView):
                 "location":True,
                 "upcoming":None,
                 "now_showing":all_movies_data,
+                "future_showings":None,
+
             }
             return Response({"error": "User location not found.","data":data},status=status.HTTP_404_NOT_FOUND)
         nearby_theaters = get_nearby_theaters(lat, lng)
@@ -131,10 +140,13 @@ class LocationMoviesView(APIView):
         ).values('movie').distinct()
 
         if not now_showing_movies or not nearby_theaters:
+                
                 data = {
                     "location":True,
                     "upcoming":None,
                     "now_showing":all_movies_data,
+                    "future_showings":None,
+
                 }
                 return Response({"error": "User location not found.","data":data},status=status.HTTP_404_NOT_FOUND)
 
@@ -143,20 +155,25 @@ class LocationMoviesView(APIView):
         movie__release_date__gt=date.today(),
         showtime__screen__theater__in=nearby_theaters
         ).values('movie').distinct()
-        print("upcoming movie before: ",upcoming_movies)
+
+        future_showings = MovieSchedule.objects.filter(
+            start_date__gt = date.today(),
+            showtime__screen__theater__in=nearby_theaters
+        ).values('movie').distinct()
 
         distinct_now_showing_movies = Movie.objects.filter(id__in=[item['movie'] for item in now_showing_movies])
         distinct_upcoming_movies = Movie.objects.filter(id__in=[item['movie'] for item in upcoming_movies])
-
+        distinct_future_movies = Movie.objects.filter(id__in=[item['movie'] for item in future_showings])
         now_showing_data = MovieSerializer(distinct_now_showing_movies, many=True).data
         upcoming_data = MovieSerializer(distinct_upcoming_movies, many=True).data
-
+        future_data = MovieSerializer(distinct_future_movies, many=True).data
 
         data = {
+            "location":True,
             "upcoming":upcoming_data,
             "now_showing":now_showing_data,
+            "future_showings":future_data,
         }
-        print("this response:",now_showing_movies)
 
 
         return Response(data,status=status.HTTP_200_OK)
@@ -188,7 +205,7 @@ class LocationTheatersView(APIView):
             return Response({"message": "This Movie is currently unavailable in this location"}, status=status.HTTP_404_NOT_FOUND)
 
         movie_id = request.data.get('id')
-        movie = Movie.objects.get(id=movie_id)
+        # movie = Movie.objects.get(id=movie_id)
 
         today = timezone.now().date()
         end_date = today + timedelta(days=5)
@@ -266,14 +283,18 @@ class MovieReviewView(APIView):
     def post(self, request):
 
         user = request.user
+        movie_id = request.data.get('movieId')
         try:
-            review = Review.objects.get(user=user)
+            movie = Movie.objects.get(id = movie_id)
+                
+            review = Review.objects.get(user=user, movie=movie)
 
             if review:
                 return Response({"message":"User is alrady rated this movie"}, status=status.HTTP_400_BAD_REQUEST)
         except Review.DoesNotExist:
             pass
-        print(request.data)
+        except Movie.DoesNotExist:
+            return Response({"message":"movie not found in this provided ID"}, status=status.HTTP_404_NOT_FOUND)
         rating = request.data.get('rating')
         request.data['rating'] = float(rating)
         serializer = ReviewSerializer(data=request.data, context={'request': request})
@@ -298,14 +319,29 @@ class MovieReviewView(APIView):
     
 
     def get(self, request, movieId):
+        user_review = None
+        user_review_data = None
+        user = request.user
+
+        try:
+            if user.is_authenticated:
+                user_review = Review.objects.get(movie__id=movieId, user=user)
+
+                user_review_data = AllReviewSerializer(user_review,context={'request': request}).data
+        except Review.DoesNotExist:
+            return Response({"message":f"Review not found."}, status=status.HTTP_404_NOT_FOUND)
+
         try:
             movie = Movie.objects.get(id=movieId)
         except Movie.DoesNotExist:
             raise NotFound(f"Movie with id {movieId} not found.")
-        reviews = Review.objects.filter(movie=movie).order_by('created_at','-likes_count', '-dislikes_count')
-        
+        if user.is_authenticated:
+            reviews = Review.objects.filter(movie=movie).exclude(user=request.user).order_by('created_at','-likes_count', '-dislikes_count')
+        else:
+            reviews = Review.objects.filter(movie=movie).order_by('created_at','-likes_count', '-dislikes_count')
+
         serializer = AllReviewSerializer(reviews, many=True, context={'request': request})
-        return Response(serializer.data)
+        return Response({"otherReviews":serializer.data, "userReview":user_review_data}, status=status.HTTP_200_OK)
 
 
 from rest_framework.views import APIView
@@ -348,3 +384,55 @@ class ReviewReactionView(APIView):
             "dislikes": dislike_count,
             "currentReaction": reaction
         }, status=HTTP_200_OK)
+
+
+
+class InactiveMovieView(APIView):
+    permission_classes = [IsAuthenticated]
+    def post(self,request):
+        movie_id = request.data.get('id')
+        if not movie_id:
+            return Response({"message":"movie id not found"}, status=status.HTTP_204_NO_CONTENT)
+        try:
+            movie = Movie.objects.get(tmdb_id = movie_id)
+            if movie:
+                movie.is_listed = False
+                movie.save()
+        except Movie.DoesNotExist:
+            return Response({"message":"movie does not exist in the db"}, status=status.HTTP_404_NOT_FOUND)
+        
+
+        return Response({"message":"movie deactivated"},status=status.HTTP_200_OK)
+    
+class ActiveMovieView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self,request):
+        movie_id = request.data.get('id')
+        if not movie_id:
+            return Response({"message":"movie id not found"}, status=status.HTTP_204_NO_CONTENT)
+        try:
+            movie = Movie.objects.get(tmdb_id = movie_id)
+            if movie:
+                movie.is_listed = True
+                movie.save()
+        except Movie.DoesNotExist:
+            return Response({"message":"movie does not exist in the db"}, status=status.HTTP_404_NOT_FOUND)
+        
+
+        return Response({"message":"movie Activated"},status=status.HTTP_200_OK)
+    
+
+
+
+class GetMovieIDsView(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self,request):
+        movie_ids = Movie.objects.all().values('tmdb_id','title')
+        ids = []
+        for id in movie_ids:
+            print(id)
+            ids.append(id["tmdb_id"])
+
+        return Response({"message":"movie ids fetched successfully", "ids":ids},status=status.HTTP_200_OK)
+

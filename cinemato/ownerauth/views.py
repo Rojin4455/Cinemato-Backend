@@ -3,22 +3,21 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
-from .serializers import OwnerSignupSerializer,OwnerLoginSerializer
+from .serializers import OwnerSignupSerializer,OwnerLoginSerializer, TheaterOwnerSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
+from notification.models import Notification
+from accounts.models import User
 
 # Create your views here.
 
 class OwnerSignupView(APIView):
     def post(self, request, *args, **kwargs):
-        # Pass request data to the OwnerSignupSerializer
-        print("reach here")
         serializer = OwnerSignupSerializer(data=request.data)
 
         # Validate the data
         if serializer.is_valid():
             owner = serializer.save()
             
-            # Customize the response to exclude sensitive data
             response_data = {
                 'id': owner.id,
                 'email': owner.email,
@@ -65,3 +64,17 @@ class OwnerLogoutView(APIView):
     permission_classes = [IsAuthenticated]
 
     pass
+
+
+class OwnerDetailsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, notificationId):
+        notification = Notification.objects.get(id=notificationId)
+        notification.is_read = True
+        notification.save()
+        user = User.objects.get(id = notification.created_user)
+
+        user = TheaterOwnerSerializer(user).data
+        return Response(user)
+        
