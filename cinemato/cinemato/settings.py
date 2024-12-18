@@ -58,7 +58,6 @@ DEFAULT_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'corsheaders',
-    'django.contrib.gis',
     'adminauth',
     'movie_management',
     'ownerauth',
@@ -355,7 +354,7 @@ AUTHENTICATION_BACKENDS = (
 # GDAL_LIBRARY_PATH = '/opt/homebrew/opt/gdal/lib/libgdal.dylib'
 # GEOS_LIBRARY_PATH = '/opt/homebrew/opt/geos/lib/libgeos_c.dylib'
 
-GDAL_LIBRARY_PATH = "/opt/homebrew/lib/libgdal.dylib"
+# GDAL_LIBRARY_PATH = "/opt/homebrew/lib/libgdal.dylib"
 
 # GDAL_LIBRARY_PATH = "/opt/homebrew/Cellar/gdal/3.9.2_2/lib -lgdal"
 
