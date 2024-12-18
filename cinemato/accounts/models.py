@@ -117,8 +117,8 @@ class OTP(models.Model):
 class UserProfile(models.Model):
     user = models.OneToOneField(
         User, on_delete=models.CASCADE, related_name="user_profile")
-    profile_pic = models.ImageField(
-        upload_to='user/profile_pic/', null=True, blank=True)
+    # profile_pic = models.ImageField(
+    #     upload_to='user/profile_pic/', null=True, blank=True)
     
     image_url = models.URLField(max_length=500,default="")
 

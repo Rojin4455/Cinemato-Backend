@@ -61,10 +61,10 @@ def save_image_from_url(url, user_profile_instance):
             img_temp.seek(0)  # Reset file pointer to the beginning
 
             # Save the image to the user's profile
-            user_profile_instance.profile_pic.save(
-                f"{user_profile_instance.user.id}_profile_pic.jpg",
-                ContentFile(img_temp.read())
-            )
+            # user_profile_instance.profile_pic.save(
+            #     f"{user_profile_instance.user.id}_profile_pic.jpg",
+            #     ContentFile(img_temp.read())
+            # )
             
     except requests.RequestException as e:
         print(f"Failed to download image: {e}")

@@ -100,6 +100,10 @@ CLOUDINARY_STORAGE = {
 DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 
 
+STATICFILES_STORAGE = 'cloudinary_storage.storage.StaticCloudinaryStorage'
+
+MEDIA_URL = '/media/'
+STATIC_URL = '/static/'
 
 import cloudinary
 
@@ -114,7 +118,7 @@ cloudinary.config(
 # print("cloudinary result: ",result)
 
 
-MEDIA_URL = '/media/'
+# MEDIA_URL = '/media/'
 
 
 
@@ -326,7 +330,7 @@ USE_I18N = True
 USE_TZ = True
 
 
-STATIC_URL = 'static/'
+# STATIC_URL = 'static/'
 
 
 
