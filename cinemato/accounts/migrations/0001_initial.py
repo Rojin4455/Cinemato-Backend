@@ -66,7 +66,7 @@ class Migration(migrations.Migration):
             name='UserProfile',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('profile_pic', models.ImageField(blank=True, null=True, upload_to='user/profile_pic/')),
+                # ('profile_pic', models.ImageField(blank=True, null=True, upload_to='user/profile_pic/')),
                 ('image_url', models.URLField(default='', max_length=500)),
                 ('user', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='user_profile', to=settings.AUTH_USER_MODEL)),
             ],
