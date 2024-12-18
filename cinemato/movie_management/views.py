@@ -7,7 +7,7 @@ from accounts.models import UserLocation
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from theater_managemant.models import Theater
 from django.contrib.gis.geos import Point
-from django.contrib.gis.db.models.functions import Distance
+# from django.contrib.gis.db.models.functions import Distance
 from django.http import JsonResponse
 from theater_managemant.models import Theater
 from django.contrib.gis.measure import D  
@@ -16,25 +16,69 @@ from django.db.models import Q
 from datetime import date
 from rest_framework.permissions import IsAuthenticatedOrReadOnly 
 from collections import defaultdict
+from math import radians, sin, cos, sqrt, atan2
 from rest_framework.exceptions import NotFound
-from geopy.distance import geodesic 
+# from geopy.distance import geodesic 
 
 
 
+def haversine_distance(lat1, lng1, lat2, lng2):
+    """
+    Calculate the great-circle distance between two points on the Earth's surface.
+    The points are specified in decimal degrees.
+    """
+    R = 6371000  # Radius of Earth in meters
 
+    # Convert latitude and longitude from degrees to radians
+    lat1_rad = radians(lat1)
+    lng1_rad = radians(lng1)
+    lat2_rad = radians(lat2)
+    lng2_rad = radians(lng2)
 
-def get_nearby_theaters(lat,lng):
-    user_location = Point(float(lng), float(lat), srid=4326)
-    radius = 50000
+    # Compute differences
+    dlat = lat2_rad - lat1_rad
+    dlng = lng2_rad - lng1_rad
 
-    nearby_theaters = (
-        Theater.objects
-        .filter(is_approved=True, geom__distance_lte=(user_location, D(m=radius)), )
-        .annotate(distance=Distance('geom', user_location))
-        .order_by('distance')
-    )
+    # Apply Haversine formula
+    a = sin(dlat / 2)**2 + cos(lat1_rad) * cos(lat2_rad) * sin(dlng / 2)**2
+    c = 2 * atan2(sqrt(a), sqrt(1 - a))
+    distance = R * c
+
+    return distance
+
+def get_nearby_theaters(lat, lng):
+    """
+    Get nearby theaters within a specified radius using the Haversine formula.
+    """
+    radius = 50000  # Search radius in meters (50 km)
+
+    nearby_theaters = []
+    for theater in Theater.objects.filter(is_approved=True):
+        # Calculate distance
+        distance = haversine_distance(float(lat), float(lng), float(theater.lat), float(theater.lng))
+
+        # Check if theater is within the specified radius
+        if distance <= radius:
+            theater.distance = distance  # Optionally add distance attribute
+            nearby_theaters.append(theater)
+
+    # Sort theaters by distance (optional)
+    nearby_theaters.sort(key=lambda x: x.distance)
 
     return nearby_theaters
+
+
+# def get_nearby_theaters(lat,lng):
+#     user_location = Point(float(lng), float(lat), srid=4326)
+#     radius = 50000
+
+#     nearby_theaters = (
+#         Theater.objects
+#         .filter(is_approved=True )
+#         # .annotate(distance=Distance('geom', user_location))
+#     )
+
+#     return nearby_theaters
 
 class AddMovieView(APIView):
     permission_classes = [IsAuthenticated]
@@ -114,6 +158,7 @@ class LocationMoviesView(APIView):
         all_movies_data = MovieSerializer(distinct_movies, many=True).data
         lat = request.data.get("lat")
         lng = request.data.get("lng")
+        print("lat and lng in location movies : => ", lat, lng)
         address = request.data.get('address')
         if request.user.is_authenticated:
             try:
@@ -133,12 +178,13 @@ class LocationMoviesView(APIView):
             }
             return Response({"error": "User location not found.","data":data},status=status.HTTP_404_NOT_FOUND)
         nearby_theaters = get_nearby_theaters(lat, lng)
+        print("nearby theaters: ",nearby_theaters)
         now_showing_movies = MovieSchedule.objects.filter(
         start_date__lte=date.today(),
         end_date__gte = date.today(),
         showtime__screen__theater__in=nearby_theaters
         ).values('movie').distinct()
-
+        print("now_showing_movies",now_showing_movies)
         if not now_showing_movies or not nearby_theaters:
                 
                 data = {
@@ -182,8 +228,26 @@ class LocationMoviesView(APIView):
 
 
 def calculate_distance(lat1, lng1, lat2, lng2):
-    return geodesic((lat1, lng1), (lat2, lng2)).kilometers
+    """
+    Calculate the great-circle distance between two points on the Earth's surface.
+    Parameters:
+        lat1, lng1: Latitude and Longitude of the first point in decimal degrees
+        lat2, lng2: Latitude and Longitude of the second point in decimal degrees
+    Returns:
+        Distance in kilometers
+    """
+    # Convert latitude and longitude from degrees to radians
+    lat1, lng1, lat2, lng2 = map(radians, [lat1, lng1, lat2, lng2])
 
+    # Haversine formula
+    dlat = lat2 - lat1
+    dlng = lng2 - lng1
+    a = sin(dlat / 2)**2 + cos(lat1) * cos(lat2) * sin(dlng / 2)**2
+    c = 2 * atan2(sqrt(a), sqrt(1 - a))
+    radius_earth_km = 6371  # Earth's radius in kilometers
+    distance = radius_earth_km * c
+
+    return distance
 
 
 from datetime import timedelta
@@ -195,7 +259,7 @@ class LocationTheatersView(APIView):
     def post(self,request):
         lat = request.data.get("lat")
         lng = request.data.get("lng")
-
+        print("lng and lat: ",lng, lat)
         if request.user.is_authenticated:
             user_location = UserLocation.objects.get(user=request.user)
             lat, lng = user_location.lat, user_location.lng

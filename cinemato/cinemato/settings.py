@@ -132,9 +132,9 @@ MIDDLEWARE = [
 ]
 
 CORS_ALLOWED_ORIGINS = [
-    # "http://localhost:3000",
-    # "http://localhost:3001",
-    '*'
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "https://cinemato-frontend-qj62-test3.vercel.app",
 ]
 
 CORS_ALLOW_HEADERS = ['RefreshToken','authorization','x-csrftoken','content-type']
@@ -245,7 +245,7 @@ TEMPLATES = [
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.contrib.gis.db.backends.postgis',
+        'ENGINE': 'django.db.backends.postgresql',
         'NAME': config('DB_NAME'),
         'USER': config('DB_USER'),
         'PASSWORD': config('DB_PASSWORD'),

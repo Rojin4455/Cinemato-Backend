@@ -1,6 +1,6 @@
 from django.db import models
-from django.contrib.gis.geos import Point
-from django.contrib.gis.db import models as gis_models
+# from django.contrib.gis.geos import Point
+# from django.contrib.gis.db import models as gis_models
 from accounts.models import User
 
 class Theater(models.Model):
@@ -15,12 +15,12 @@ class Theater(models.Model):
     is_food_and_beverages   =       models.BooleanField(default=False)
     is_parking              =       models.BooleanField(default=False)
     image_url               =       models.URLField(max_length=500, default="")
-    geom                    =       gis_models.PointField(srid=4326, blank=True, null=True)
+    # geom                    =       gis_models.PointField(srid=4326, blank=True, null=True)
     is_approved             =       models.BooleanField(default=False)
 
-    def save(self, *args, **kwargs):
-        self.geom = Point(float(self.lng), float(self.lat), srid=4326)
-        super(Theater, self).save(*args, **kwargs)
+    # def save(self, *args, **kwargs):
+    #     self.geom = Point(float(self.lng), float(self.lat), srid=4326)
+    #     super(Theater, self).save(*args, **kwargs)
 
 
     def __str__(self):
