@@ -6,10 +6,8 @@ from .models import Movie, Hashtag, ReviewReaction, Review
 from accounts.models import UserLocation
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from theater_managemant.models import Theater
-# from django.contrib.gis.db.models.functions import Distance
 from django.http import JsonResponse
 from theater_managemant.models import Theater
-from django.contrib.gis.measure import D  
 from screen_management.models import MovieSchedule,DailyShow
 from django.db.models import Q 
 from datetime import date
@@ -17,7 +15,6 @@ from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from collections import defaultdict
 from math import radians, sin, cos, sqrt, atan2
 from rest_framework.exceptions import NotFound
-# from geopy.distance import geodesic 
 
 
 
