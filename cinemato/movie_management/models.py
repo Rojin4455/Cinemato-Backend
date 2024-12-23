@@ -41,6 +41,17 @@ class Movie(models.Model):
         return self.title
     
 
+    def recalculate_vote_average(self):
+        reviews = self.reviews.all()
+        if reviews.exists():
+            avg_rating = reviews.aggregate(avg_rating=models.Avg('rating'))['avg_rating'] or 0
+            self.vote_average = round(avg_rating, 1)
+            self.save()
+        else:
+            self.vote_average = 0
+            self.save()
+    
+
 
 class MovieRole(models.Model):
     person              = models.ForeignKey(Person, on_delete=models.CASCADE, related_name='roles') 

@@ -346,7 +346,6 @@ class MovieReviewView(APIView):
         movie_id = request.data.get('movieId')
         try:
             movie = Movie.objects.get(id = movie_id)
-                
             review = Review.objects.get(user=user, movie=movie)
 
             if review:
@@ -354,6 +353,7 @@ class MovieReviewView(APIView):
         except Review.DoesNotExist:
             pass
         except Movie.DoesNotExist:
+
             return Response({"message":"movie not found in this provided ID"}, status=status.HTTP_404_NOT_FOUND)
         rating = request.data.get('rating')
         request.data['rating'] = float(rating)
@@ -389,7 +389,7 @@ class MovieReviewView(APIView):
 
                 user_review_data = AllReviewSerializer(user_review,context={'request': request}).data
         except Review.DoesNotExist:
-            return Response({"message":f"Review not found."}, status=status.HTTP_404_NOT_FOUND)
+            pass
 
         try:
             movie = Movie.objects.get(id=movieId)
