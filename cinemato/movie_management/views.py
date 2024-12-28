@@ -256,9 +256,9 @@ class LocationTheatersView(APIView):
         lat = request.data.get("lat")
         lng = request.data.get("lng")
         print("lng and lat: ",lng, lat)
-        if request.user.is_authenticated:
-            user_location = UserLocation.objects.get(user=request.user)
-            lat, lng = user_location.lat, user_location.lng
+        # if request.user.is_authenticated:
+        #     user_location = UserLocation.objects.get(user=request.user)
+        #     lat, lng = user_location.lat, user_location.lng
 
         nearby_theaters = get_nearby_theaters(lat, lng)
         if not nearby_theaters:
