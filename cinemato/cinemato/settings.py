@@ -342,8 +342,8 @@ USE_TZ = True
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
-BASE_APP_URL = "http://localhost:3000"
-BASE_API_URL = "http://localhost:8000"
+BASE_APP_URL = config("BASE_APP_URL")
+BASE_API_URL = config("BASE_API_URL")
 GOOGLE_OAUTH2_CLIENT_ID = config('GOOGLE_OAUTH2_CLIENT_ID')
 GOOGLE_OAUTH2_CLIENT_SECRET = config('GOOGLE_OAUTH2_CLIENT_SECRET')
 

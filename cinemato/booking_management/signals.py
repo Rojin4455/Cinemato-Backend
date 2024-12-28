@@ -5,6 +5,8 @@ from django.template.loader import render_to_string
 from .models import Booking, BookedTicket, OrderSnack
 import cinemato.settings as project_settings
 from urllib.parse import urlencode
+from django.conf import settings
+
 
 
 @receiver(post_save, sender=Booking)
@@ -16,7 +18,8 @@ def send_booking_confirmation_email(sender, instance, created, **kwargs):
         seat_list = ', '.join(seats)
 
         # Generate cancellation URL
-        frontend_base_url = "http://localhost:3000/user/cancel-unknown-ticket"
+        domain = settings.BASE_APP_URL
+        frontend_base_url = f"{domain}/user/cancel-unknown-ticket"
         if instance.user:
             cancellation_params = {
                 "booking_id": instance.booking_id,
