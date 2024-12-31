@@ -144,6 +144,7 @@ class ApproveTheaterOwnerView(APIView):
         try:
             owner = User.objects.get(id = owner_id)
             owner.is_approved = True
+            owner.is_active = True
             owner.save()
             return Response({"message": "Theater owner approved successfully"}, status=status.HTTP_200_OK)
         except User.DoesNotExist:
@@ -158,6 +159,7 @@ class DisapproveTheaterOwnerView(APIView):
         try:
             owner = User.objects.get(id = owner_id)
             owner.is_approved = False
+            owner.is_active = False
             owner.save()
             return Response({"message": "Theater owner Disapproved successfully"}, status=status.HTTP_200_OK)
         except User.DoesNotExist:
