@@ -579,7 +579,7 @@ class CancelTicketView(APIView):
                     checkout_session = stripe.checkout.Session.retrieve(booking.stripe_checkout_session_id)
                     payment_intent_id = checkout_session.payment_intent
                     
-                    total_amount = float(booking.total * 100)
+                    total_amount = float(booking.total) * 100
                     refund_amount = int(total_amount * 0.75)
                     
                     stripe.Refund.create(
