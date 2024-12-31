@@ -377,7 +377,7 @@ CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
 CELERY_BEAT_SCHEDULE = {
     'revert-reserved-seats-every-1-min': {
         'task': 'booking_management.tasks.revert_unconfirmed_reservations',
-        'schedule': crontab(minute='*/1'),
+        'schedule': crontab(minute='*/5'),
     },
 }
 
