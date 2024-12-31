@@ -517,6 +517,8 @@ class CancelTicketView(APIView):
     permission_classes = [IsAuthenticated]
 
 
+    from decimal import Decimal
+
     def post(self, request):
         data = request.data
         current_utc_time = datetime.now(datetime_timezone.utc)
@@ -534,7 +536,6 @@ class CancelTicketView(APIView):
         if booking.is_cancelled:
             return Response({'message': 'Booking is already cancelled.'}, status=status.HTTP_400_BAD_REQUEST)
 
-         
         if booking.show_date > current_ist_time.date() or (
             booking.show_date == current_ist_time.date() and booking.show_time > cancellation_cutoff_time.time()
         ):
@@ -575,15 +576,15 @@ class CancelTicketView(APIView):
                 seat.reserved_at = None
                 seat.save()
 
-
             if booking.stripe_checkout_session_id:
                 try:
                     checkout_session = stripe.checkout.Session.retrieve(booking.stripe_checkout_session_id)
                     payment_intent_id = checkout_session.payment_intent
-                    
+
+                    # Corrected the multiplication issue
                     total_amount = booking.total * Decimal('100')
                     refund_amount = int(total_amount * Decimal('0.75'))
-                    
+
                     stripe.Refund.create(
                         payment_intent=payment_intent_id,
                         amount=refund_amount,
@@ -599,6 +600,7 @@ class CancelTicketView(APIView):
         else:
             return Response({'message': 'Cancellation is only available at least 4 hours before the showtime.'}, 
                             status=status.HTTP_400_BAD_REQUEST)
+
 
             
 
