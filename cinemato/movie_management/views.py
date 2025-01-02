@@ -290,6 +290,7 @@ class LocationTheatersView(APIView):
             theater_id = theater.id
             screen_name = schedule.showtime.screen.name
             screen_type = schedule.showtime.screen.type
+            screen_id = schedule.showtime.screen.id
             theater_location = (theater.lat, theater.lng)
 
             if theater_name not in theater_info:
@@ -302,7 +303,7 @@ class LocationTheatersView(APIView):
 
             for show in daily_shows:
                 date_str = str(show.show_date)
-                response_data[date_str][theater_name]["screens"][screen_name].append([show.show_time.strftime("%H:%M"),screen_type])
+                response_data[date_str][theater_name]["screens"][screen_name].append([show.show_time.strftime("%H:%M"),screen_type,screen_id])
 
                 response_data[date_str][theater_name]["address"] = theater_info[theater_name]["address"]
                 response_data[date_str][theater_name]["distance_km"] = theater_info[theater_name]["distance_km"]

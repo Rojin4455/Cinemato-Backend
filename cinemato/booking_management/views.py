@@ -25,6 +25,8 @@ from io import BytesIO
 import cloudinary.uploader
 from django.db.models import Q
 from decimal import Decimal
+from accounts.models import User
+
 
 
 
@@ -54,19 +56,20 @@ class SeatLayoutClass(APIView):
     permission_classes = []
 
     def post(self, request):
-        # Get required parameters
         theater_id = request.data.get('theater_id')
         screen_name = request.data.get('screen_name')
         screen_time = request.data.get('screen_time')
         show_date = request.data.get('date')
         movie_id = request.data.get('movie_id')
+        screen_id = request.data.get('screen_id')
 
-        print("data: ", show_date, "type of showdate :",type(show_date))
+
+
 
         if isinstance(show_date, dict):
             show_date = f"{show_date['year']}-{month_converter(show_date['month'])}-{show_date['date']}"
 
-        if not all([theater_id, screen_name, screen_time, show_date]):
+        if not all([theater_id, screen_name,screen_id, screen_time, show_date]):
             return Response(
                 {"error": "Missing required fields: theater_id, screen_name, screen_time, date"},
                 status=status.HTTP_400_BAD_REQUEST
@@ -75,19 +78,14 @@ class SeatLayoutClass(APIView):
         try:
             theater = Theater.objects.get(id=theater_id)
             
-            screen = Screen.objects.get(theater=theater, name__iexact=screen_name)
+            # screen = Screen.objects.get(theater=theater, name__iexact=screen_name)
+            screen = Screen.objects.get(id=screen_id)
             
             time = ShowTime.objects.get(screen=screen, start_time=screen_time)
 
             movie_schedule = MovieSchedule.objects.get(showtime=time, showtime__screen__theater__id = theater.id, showtime__screen = screen, start_date__lte=show_date, end_date__gte=show_date)
 
-
-            print("movie scheduls founded: ",movie_schedule)
-            
-            # print("daily show1: ",daily_show)
-            print('movie scheduls: ',movie_schedule,"show date: ",show_date,"shot time: ",screen_time)
             daily_show = DailyShow.objects.get(schedule=movie_schedule, show_date =  show_date, show_time = screen_time)
-            print("daily show: ",daily_show)
             seats = SeatBooking.objects.filter(daily_show=daily_show).order_by('position', 'identifier')
             
             grouped_seats = defaultdict(list)
@@ -238,7 +236,10 @@ def create_payment_intent(request):
             total = sum(float(seat['seat']['tier_price']) for seat in selected_seats) + \
                     sum(float(snack['price']) * data['quantities'][str(snack['id'])] for snack in added_snacks)
             theater_obj = Theater.objects.get(id=theater['id'])
-
+            try:
+                user = User.objects.get(email=data.get('email'))
+            except:
+                pass
             screen = Screen.objects.get(theater__id=theater_obj.id, name__iexact=screen_name)
             booking = Booking.objects.create(
                 user=user,
@@ -302,7 +303,6 @@ def create_payment_intent(request):
                         'currency': 'inr',
                         'product_data': {
                             'name': snack['name'],
-                            'description': snack['description'],
                             'images': [snack['image_url']],
                         },
                         'unit_amount': int(snack['price'].split(".")[0]) * 100,
