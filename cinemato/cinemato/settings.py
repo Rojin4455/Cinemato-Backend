@@ -37,7 +37,7 @@ SECRET_KEY = config('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=True, cast=bool)
 
-ALLOWED_HOSTS = ['cinemato.site','www.cinemato.site','127.0.0.1', 'localhost', '13.127.240.102', '13.233.253.141']
+ALLOWED_HOSTS = ['cinemato.site','www.cinemato.site','127.0.0.1', 'localhost', '13.127.240.102', '13.233.253.141', 'api.cinemato.site']
 
 
 # Application definition
@@ -88,7 +88,7 @@ CHANNEL_LAYERS = {
     },
 }
 
-CSRF_TRUSTED_ORIGINS = ['https://cinemato.site']
+CSRF_TRUSTED_ORIGINS = ['https://api.cinemato.site']
 
 
 
@@ -142,7 +142,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://localhost:3001",
     "https://cinemato-frontend-qj62-test3.vercel.app",
-    "https://cinemato.site",
+    "https://api.cinemato.site",
 ]
 
 CORS_ALLOW_HEADERS = ['RefreshToken','authorization','x-csrftoken','content-type']
