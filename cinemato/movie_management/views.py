@@ -253,6 +253,7 @@ class LocationTheatersView(APIView):
     permission_classes = []
 
     def post(self,request):
+        
         lat = request.data.get("lat")
         lng = request.data.get("lng")
         print("lng and lat: ",lng, lat)
