@@ -142,6 +142,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://localhost:3001",
     "https://cinemato-frontend-qj62-test3.vercel.app",
+    "https://cinemato-frontend.vercel.app"
     "https://api.cinemato.site",
 ]
 

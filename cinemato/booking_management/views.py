@@ -62,6 +62,7 @@ class SeatLayoutClass(APIView):
         show_date = request.data.get('date')
         movie_id = request.data.get('movie_id')
         screen_id = request.data.get('screen_id')
+        
 
 
 
