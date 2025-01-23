@@ -370,15 +370,15 @@ AUTHENTICATION_BACKENDS = (
 
 
 
-CELERY_BROKER_URL = 'redis://localhost:6379/0'
-CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+CELERY_BROKER_URL = f'redis://{config("REDIS_IP")}:6379/0'
+CELERY_RESULT_BACKEND = f'redis://{config("REDIS_IP")}:6379/0'
 
 
 
 CELERY_BEAT_SCHEDULE = {
     'revert-reserved-seats-every-1-min': {
         'task': 'booking_management.tasks.revert_unconfirmed_reservations',
-        'schedule': crontab(minute='*/5'),
+        'schedule': crontab(minute='*/1'),
     },
 }
 
