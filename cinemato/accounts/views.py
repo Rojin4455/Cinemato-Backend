@@ -18,12 +18,18 @@ from .serializers import AuthSerializer
 import jwt
 from django.middleware.csrf import get_token
 import cloudinary.uploader
+import logging
+from twilio.base.exceptions import TwilioRestException
+
+logger = logging.getLogger(__name__)
 
 
+def checking_function():
+    print("status success")
 
 def get_tokens_for_user(user):
     refresh = RefreshToken.for_user(user)
-
+    
     return {
         'refresh':str(refresh),
         'access':str(refresh.access_token),
@@ -92,21 +98,37 @@ class RequestOTPView(APIView):
             elif phone:
                 print("data is valid")
                 try:
+                    # Validate required settings
+                    required_settings = ['ACCOUNT_SID', 'AUTH_TOKEN', 'TWILIO_PHONE_NUMBER', 'COUNTRY_CODE']
+                    for attr in required_settings:
+                        if not hasattr(settings, attr):
+                            logger.error(f"Missing required Twilio setting: {attr}")
+                            return Response({"message": "Server configuration error."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+                    # Initialize Twilio Client
                     client = Client(settings.ACCOUNT_SID, settings.AUTH_TOKEN)
+
+                    # Send OTP message
                     message = client.messages.create(
                         body=f'Your OTP is: {otp_code}',
                         from_=settings.TWILIO_PHONE_NUMBER,
                         to=f'{settings.COUNTRY_CODE}{phone}'
                     )
-                    print("success")
-                    return Response({"message": "OTP sent successfully."}, status=status.HTTP_200_OK)
-                except Exception as e:
-                    print(f"Error sending OTP: {e}")
-                    return Response({"message": "Failed to send OTP."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        print("error: ",serializer.errors)
 
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+                    logger.info(f"OTP sent successfully to {phone}: Message SID {message.sid}")
+                    return Response({"message": "OTP sent successfully."}, status=status.HTTP_200_OK)
+
+                except TwilioRestException as e:
+                    logger.error(f"Twilio error: {e}")
+                    return Response({"message": "Failed to send OTP due to provider error."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+                except Exception as e:
+                    logger.error(f"Unexpected error sending OTP: {e}")
+                    return Response({"message": "Failed to send OTP."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                    print("error: ",serializer.errors)
+
+                    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                
 
 
 class VerifyOTPView(APIView):
@@ -195,7 +217,6 @@ class ConfirmGoogleLogin(APIView):
                 return Response({"error": "This account is not active!"}, status=status.HTTP_404_NOT_FOUND)
         except User.DoesNotExist:
             return Response({"error": "User does not exist"}, status=status.HTTP_404_NOT_FOUND)
-
 
 
 # views that handle 'localhost://8000/auth/api/login/google/'

@@ -98,7 +98,7 @@ class VerifyOTPSerializer(serializers.Serializer):
         lat = validated_data.get('lat')
         lng = validated_data.get('lng')
         
-        first_name = email.split("@")[0]
+        first_name = email.split("@")[0] if email else f"{phone}"
         first_name = first_name
         last_name = validated_data.get('last_name')
 
@@ -126,7 +126,7 @@ class VerifyOTPSerializer(serializers.Serializer):
                 return user
         
         user = User.objects.create(
-            email=email if email else None,
+            email=email if email else f"{phone}@nomail.com",
             phone=phone if phone else None,
             first_name=first_name,
             last_name=last_name
